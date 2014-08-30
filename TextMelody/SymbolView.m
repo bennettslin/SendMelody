@@ -8,31 +8,37 @@
 
 #import "SymbolView.h"
 #import "Constants.h"
+#import "TouchSubview.h"
 
 @interface SymbolView ()
+
+@property (strong, nonatomic) TouchSubview *touchSubview;
 
 @end
 
 @implementation SymbolView
 
 -(instancetype)initWithSymbol:(MusicSymbol)symbol {
-    self = [super init];
-    if (self) {
-      self.font = [UIFont fontWithName:kFontSonata size:kSymbolFontSize];
-      self.textColor = kSymbolColour;
-      self.userInteractionEnabled = [self determineIfUserInterationEnabledWithSymbol:symbol];
-      [self modifyGivenSymbol:symbol];
-      
-        // debug only
-      UIView *centerDot = [[UIView alloc] initWithFrame:CGRectMake(0, 0, 1.5, 1.5)];
-      centerDot.backgroundColor = [UIColor redColor];
-      centerDot.center = self.center;
-      [self addSubview:centerDot];
-      
-      self.layer.borderColor = [UIColor redColor].CGColor;
-      self.layer.borderWidth = 0.5f;
+  self = [super init];
+  if (self) {
+    self.font = [UIFont fontWithName:kFontSonata size:kSymbolFontSize];
+    self.textColor = kSymbolColour;
+    [self modifyGivenSymbol:symbol];
+    if ([self determineIfUserInterationEnabledWithSymbol:symbol]) {
+      self.userInteractionEnabled = YES;
+      [self instantiateTouchSubview];
     }
-    return self;
+    
+      // testing purposes
+    UIView *centerDot = [[UIView alloc] initWithFrame:CGRectMake(0, 0, 1.5, 1.5)];
+    centerDot.backgroundColor = [UIColor redColor];
+    centerDot.center = self.center;
+    [self addSubview:centerDot];
+    
+    self.layer.borderColor = [UIColor redColor].CGColor;
+    self.layer.borderWidth = 0.5f;
+  }
+  return self;
 }
 
 -(void)modifyGivenSymbol:(MusicSymbol)symbol {
@@ -51,9 +57,31 @@
 -(void)endTouch {
   self.font = [UIFont fontWithName:kFontSonata size:kSymbolFontSize];
   [self sizeToFit];
+  
+  [self repositionTouchSubview];
 }
 
+#pragma mark - custom getters and setters
+
 #pragma mark - helper methods
+
+-(void)instantiateTouchSubview {
+  self.touchSubview = [[TouchSubview alloc] initWithFrame:CGRectMake(0, 0, kTouchSubviewRadius * 2, kTouchSubviewRadius * 2)];
+  [self addSubview:self.touchSubview];
+  
+  [self repositionTouchSubview];
+}
+
+-(void)repositionTouchSubview {
+  
+    // testing purposes
+  self.touchSubview.layer.borderColor = [UIColor redColor].CGColor;
+  self.touchSubview.layer.borderWidth = 0.5;
+  self.touchSubview.layer.cornerRadius = kTouchSubviewRadius;
+  self.touchSubview.clipsToBounds = YES;
+  
+  self.touchSubview.center = CGPointMake(self.frame.size.width / 2, (self.frame.size.height + kStaveHeight) / 2);
+}
 
 -(BOOL)determineIfUserInterationEnabledWithSymbol:(MusicSymbol)symbol {
   if (symbol == kQuarterNoteStemUp ||

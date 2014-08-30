@@ -25,6 +25,7 @@
 #define kStaveYAdjust -.09f
 
 #define kTouchScaleFactor 1.5
+#define kTouchSubviewRadius 30.f
 
 typedef enum musicSymbol {
   kTrebleClef,

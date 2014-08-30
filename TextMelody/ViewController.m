@@ -120,8 +120,8 @@
   CGPoint locationPoint = [[touches anyObject] locationInView:self.view];
   UIView *touchedView = [self.view hitTest:locationPoint withEvent:event];
 
-  if ([touchedView isKindOfClass:SymbolView.class]) {
-    self.touchedNote = (SymbolView *)touchedView;
+  if ([touchedView.superview isKindOfClass:SymbolView.class]) {
+    self.touchedNote = (SymbolView *)touchedView.superview;
     [self.touchedNote beginTouch];
     self.touchedNote.center = self.touchedNote.superview == self.view ?
       locationPoint : [self getStavesViewLocationForSelfViewLocation:locationPoint];
