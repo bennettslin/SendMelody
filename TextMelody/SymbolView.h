@@ -11,10 +11,12 @@
 
 @interface SymbolView : UILabel
 
-  // might not be necessary to have its own symbol
 @property (nonatomic) MusicSymbol mySymbol;
 
 -(instancetype)initWithSymbol:(MusicSymbol)symbol;
 -(void)modifyGivenSymbol:(MusicSymbol)symbol;
+
+-(void)beginTouch;
+-(void)endTouch;
 
 @end

@@ -16,12 +16,15 @@
 #define kSymbolColour [UIColor blackColor]
 
 #define kStaveWidth 768.f // this must be 768 or less
-#define kStaveWidthMargin (kStaveWidth * 0.05)
-#define kStaveHeight (kIsIPhone ? 20.f : 40.f)
+#define kStaveWidthMargin (kStaveWidth * 0.025)
+#define kStaveHeight (kIsIPhone ? 14.f : 40.f)
 #define kContainerContentHeight (kStaveHeight * 12)
 
 #define kStaveColour [UIColor blackColor]
 #define kStaveLineDensity 0.75f
+#define kStaveYAdjust -.09f
+
+#define kTouchScaleFactor 1.5
 
 typedef enum musicSymbol {
   kTrebleClef,
