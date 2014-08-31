@@ -12,11 +12,18 @@
 @interface SymbolView : UILabel
 
 @property (nonatomic) MusicSymbol mySymbol;
+@property (nonatomic) CGPoint homePosition;
+@property (nonatomic) BOOL onStaves;
 
 -(instancetype)initWithSymbol:(MusicSymbol)symbol;
--(void)modifyGivenSymbol:(MusicSymbol)symbol;
+-(void)modifyGivenSymbol:(MusicSymbol)symbol resize:(BOOL)resize;
 
 -(void)beginTouch;
 -(void)endTouch;
+
+-(void)changeStemDirection;
+-(void)sendHomeToRack;
+
+-(void)showLedgerLine:(BOOL)show;
 
 @end

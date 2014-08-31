@@ -8,6 +8,6 @@
 
 #import <UIKit/UIKit.h>
 
-@interface TouchSubview : UIView
+@interface TouchSubview : UILabel
 
 @end

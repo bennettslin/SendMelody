@@ -13,6 +13,7 @@
 @interface SymbolView ()
 
 @property (strong, nonatomic) TouchSubview *touchSubview;
+@property (strong, nonatomic) SymbolView *ledgerLine;
 
 @end
 
@@ -21,12 +22,19 @@
 -(instancetype)initWithSymbol:(MusicSymbol)symbol {
   self = [super init];
   if (self) {
+    
+    self.onStaves = NO;
+    
     self.font = [UIFont fontWithName:kFontSonata size:kSymbolFontSize];
+    self.textAlignment = NSTextAlignmentCenter;
     self.textColor = kSymbolColour;
-    [self modifyGivenSymbol:symbol];
-    if ([self determineIfUserInterationEnabledWithSymbol:symbol]) {
+    if ([self determineIfTouchableWithSymbol:symbol]) {
       self.userInteractionEnabled = YES;
+      [self modifyGivenSymbol:symbol resize:YES]; // must be between these two
+      [self instantiateLedgerLine];
       [self instantiateTouchSubview];
+    } else {
+      [self modifyGivenSymbol:symbol resize:YES];
     }
     
       // testing purposes
@@ -41,23 +49,70 @@
   return self;
 }
 
--(void)modifyGivenSymbol:(MusicSymbol)symbol {
+-(void)modifyGivenSymbol:(MusicSymbol)symbol resize:(BOOL)resize {
   self.mySymbol = symbol;
   self.text = [self stringForMusicSymbol:symbol];
-  [self sizeToFit];
-  CGRect frame = CGRectMake(0, 0, self.frame.size.width, kStaveHeight * 12);
-  self.frame = frame;
+  
+  if (resize) {
+    
+    if (self.userInteractionEnabled) {
+      CGRect frame = CGRectMake(self.frame.origin.x, self.frame.origin.y,
+                                kTouchSubviewRadius * 2, kTouchSubviewRadius * 6);
+      self.frame = frame;
+      
+    } else if (self.mySymbol == kLedgerLine) {
+      self.frame = CGRectMake(0, 0, self.superview.frame.size.width, self.superview.frame.size.height);
+      
+    } else {
+      [self sizeToFit];
+    }
+  }
+}
+
+-(void)changeStemDirection {
+  switch (self.mySymbol) {
+    case kQuarterNoteStemUp:
+      self.mySymbol = kQuarterNoteStemDown;
+      break;
+    case kQuarterNoteStemDown:
+      self.mySymbol = kQuarterNoteStemUp;
+      break;
+    case kHalfNoteStemUp:
+      self.mySymbol = kHalfNoteStemDown;
+      break;
+    case kHalfNoteStemDown:
+      self.mySymbol = kHalfNoteStemUp;
+      break;
+    default:
+      break;
+  }
+  
+  [self modifyGivenSymbol:self.mySymbol resize:NO];
+  [self repositionTouchSubview];
 }
 
 -(void)beginTouch {
   self.font = [UIFont fontWithName:kFontSonata size:kSymbolFontSize * kTouchScaleFactor];
-  [self sizeToFit];
+  self.ledgerLine.font = [UIFont fontWithName:kFontSonata size:kSymbolFontSize * kTouchScaleFactor];
+  [self repositionTouchSubview];
 }
 
 -(void)endTouch {
   self.font = [UIFont fontWithName:kFontSonata size:kSymbolFontSize];
-  [self sizeToFit];
+  self.ledgerLine.font = [UIFont fontWithName:kFontSonata size:kSymbolFontSize];
+  [self repositionTouchSubview];
+}
+
+-(void)sendHomeToRack {
+  if (self.mySymbol == kQuarterNoteStemDown) {
+    [self modifyGivenSymbol:kQuarterNoteStemUp resize:NO];
+  } else if (self.mySymbol == kHalfNoteStemDown) {
+    [self modifyGivenSymbol:kHalfNoteStemUp resize:NO];
+  } else {
+    [self modifyGivenSymbol:self.mySymbol resize:NO];
+  }
   
+  self.center = self.homePosition;
   [self repositionTouchSubview];
 }
 
@@ -65,10 +120,22 @@
 
 #pragma mark - helper methods
 
+-(void)instantiateLedgerLine {
+  self.ledgerLine = [[SymbolView alloc] initWithSymbol:kLedgerLine];
+  self.ledgerLine.center = CGPointMake(self.frame.size.width / 2, self.frame.size.height / 2);
+  self.ledgerLine.hidden = YES;
+  
+  [self addSubview:self.ledgerLine];
+  [self.ledgerLine modifyGivenSymbol:kLedgerLine resize:YES];
+}
+
+-(void)showLedgerLine:(BOOL)show {
+  self.ledgerLine.hidden = !show;
+}
+
 -(void)instantiateTouchSubview {
   self.touchSubview = [[TouchSubview alloc] initWithFrame:CGRectMake(0, 0, kTouchSubviewRadius * 2, kTouchSubviewRadius * 2)];
   [self addSubview:self.touchSubview];
-  
   [self repositionTouchSubview];
 }
 
@@ -83,7 +150,7 @@
   self.touchSubview.center = CGPointMake(self.frame.size.width / 2, (self.frame.size.height + kStaveHeight) / 2);
 }
 
--(BOOL)determineIfUserInterationEnabledWithSymbol:(MusicSymbol)symbol {
+-(BOOL)determineIfTouchableWithSymbol:(MusicSymbol)symbol {
   if (symbol == kQuarterNoteStemUp ||
       symbol == kQuarterNoteStemDown ||
       symbol == kHalfNoteStemUp ||
@@ -108,6 +175,9 @@
       break;
     case kFlat:
       charIndex = 98;
+      break;
+    case kLedgerLine:
+      charIndex = 95;
       break;
     case kQuarterNoteStemUp:
       charIndex = 113;
@@ -145,20 +215,5 @@
   unichar myChar[1] = {(unichar)charIndex};
   return [NSString stringWithCharacters:myChar length:1];
 }
-
-//-(UIView *)hitTest:(CGPoint)point withEvent:(UIEvent *)event
-//{
-//  if (!self.clipsToBounds && !self.hidden && self.alpha > 0) {
-//    for (UIView *subview in self.subviews.reverseObjectEnumerator) {
-//      CGPoint subPoint = [subview convertPoint:point fromView:self];
-//      UIView *result = [subview hitTest:subPoint withEvent:event];
-//      if (result != nil) {
-//        return result;
-//      }
-//    }
-//  }
-//  
-//  return nil;
-//}
 
 @end

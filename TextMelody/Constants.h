@@ -22,7 +22,7 @@
 
 #define kStaveColour [UIColor blackColor]
 #define kStaveLineDensity 0.75f
-#define kStaveYAdjust -.09f
+#define kStaveYAdjust (kStaveHeight * -0.05f)
 
 #define kTouchScaleFactor 1.5
 #define kTouchSubviewRadius 30.f
@@ -34,6 +34,7 @@ typedef enum musicSymbol {
   kBassClef,
   kSharp,
   kFlat,
+  kLedgerLine,
   kQuarterNoteStemUp,
   kQuarterNoteStemDown,
   kQuarterNoteRest,

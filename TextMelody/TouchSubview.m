@@ -13,7 +13,7 @@
 - (instancetype)initWithFrame:(CGRect)frame {
     self = [super initWithFrame:frame];
     if (self) {
-        // Initialization code
+      self.userInteractionEnabled = YES;
     }
     return self;
 }
