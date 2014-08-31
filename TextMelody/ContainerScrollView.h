@@ -13,6 +13,7 @@
 @interface ContainerScrollView : UIScrollView
 
 @property (weak, nonatomic) id<ContainerDelegate> customDelegate;
+@property (nonatomic) BOOL noteTouched;
 
 @end
 

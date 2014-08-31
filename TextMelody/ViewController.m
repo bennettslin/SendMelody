@@ -27,6 +27,7 @@
 
 @property (nonatomic) CGVector touchOffset;
 @property (nonatomic) NSInteger tempStaveIndexForTouchedNote;
+@property (nonatomic) BOOL touchedNoteMoved;
 
 @end
 
@@ -51,6 +52,11 @@
 
 -(void)viewWillAppear:(BOOL)animated {
   [super viewWillAppear:animated];
+}
+
+-(void)viewWillDisappear:(BOOL)animated {
+  self.touchedNote = nil;
+  self.touchedNoteMoved = NO;
 }
 
 -(void)loadFixedViews {
@@ -120,8 +126,7 @@
       break;
   }
   
-  newNote.homePosition = CGPointMake(xPosition, _screenHeight - 50);
-  NSLog(@"%i is %.2f, %.2f", newNote.mySymbol, newNote.frame.size.width, newNote.frame.size.height);
+  newNote.homePosition = CGPointMake(xPosition, _screenHeight * 3/4);
   newNote.center = newNote.homePosition;
   
   [self.view addSubview:newNote];
@@ -185,7 +190,8 @@
   CGPoint touchLocation = (self.touchedNote.superview == self.view && !ended) ?
   locationPoint : [self getStavesViewLocationForSelfViewLocation:locationPoint];
   self.touchedNote.center = CGPointMake(self.touchOffset.dx + touchLocation.x,
-                                        self.touchOffset.dy + touchLocation.y);
+                                        self.touchOffset.dy + touchLocation.y -
+                                        (kStaveHeight * kTouchScaleFactor - kStaveHeight)); // doesn't seem to work in terms of making the notes stay centered while scaling
   return self.touchedNote.center;
 }
 
@@ -212,6 +218,8 @@
   CGPoint locationPoint = [[touches anyObject] locationInView:self.view];
   UIView *touchedView = [self.view hitTest:locationPoint withEvent:event];
 
+//  NSLog(@"touched view is %@", touchedView);
+  
   if ([touchedView.superview isKindOfClass:SymbolView.class]) {
     self.touchedNote = (SymbolView *)touchedView.superview;
     [self.touchedNote beginTouch];
@@ -220,7 +228,8 @@
     CGPoint touchLocation = self.touchedNote.superview == self.view ?
     locationPoint : [self getStavesViewLocationForSelfViewLocation:locationPoint];
     self.touchOffset = CGVectorMake(self.touchedNote.center.x - touchLocation.x,
-                                    self.touchedNote.center.y - touchLocation.y);
+                                    self.touchedNote.center.y - touchLocation.y +
+                                    (kStaveHeight * kTouchScaleFactor - kStaveHeight));
     
     self.tempStaveIndexForTouchedNote = [self staveIndexForNoteCenter:locationPoint];
   }
@@ -228,6 +237,7 @@
 
 -(void)touchesMoved:(NSSet *)touches withEvent:(UIEvent *)event {
   if (self.touchedNote) {
+    self.touchedNoteMoved = YES;
     
       // recenter
     CGPoint locationPoint = [[touches anyObject] locationInView:self.view];
@@ -241,11 +251,19 @@
 
 -(void)touchesEnded:(NSSet *)touches withEvent:(UIEvent *)event {
   if (self.touchedNote) {
+    if (self.touchedNoteMoved) {
+        // recenter
+      CGPoint locationPoint = [[touches anyObject] locationInView:self.view];
+      CGPoint noteCenter = [self recenterTouchedNoteWithLocationPoint:locationPoint ended:NO];
+      self.tempStaveIndexForTouchedNote = [self staveIndexForNoteCenter:noteCenter];
+      
+        // check whether to add to staves
+      [self decideWhetherToAddTouchedNoteToStaves];
+      
+      self.touchedNoteMoved = NO;
+    }
+    
     [self.touchedNote endTouch];
-    
-      // check whether to add to staves
-    [self decideWhetherToAddTouchedNoteToStaves];
-    
     self.touchedNote = nil;
   }
 }
@@ -331,7 +349,7 @@
   CGFloat yOrigin = _screenHeight / 3 - self.stavesView.frame.size.height / 2;
   CGFloat noteCenterRelativeToYOrigin = noteCenter.y - yOrigin;
   NSInteger staveIndex = ((noteCenterRelativeToYOrigin + kStaveHeight / 2) / (kStaveHeight / 2));
-  NSLog(@"staveIndex %li", (long)staveIndex);
+//  NSLog(@"staveIndex %li", (long)staveIndex);
 
     // establish whether to show ledger line here
   [self.touchedNote showLedgerLine:(staveIndex < 6 || staveIndex > 16)];
@@ -354,6 +372,12 @@
 
 -(void)touchesCancelled:(NSSet *)touches withEvent:(UIEvent *)event {
   [self touchesEnded:touches withEvent:event];
+}
+
+-(UIView *)hitTest:(CGPoint)point withEvent:(UIEvent *)event {
+  UIView *result = [self.view hitTest:point withEvent:event];
+  NSLog(@"touch result is %@", result);
+  return result;
 }
 
 -(void)didReceiveMemoryWarning {

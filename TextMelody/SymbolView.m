@@ -92,6 +92,7 @@
 }
 
 -(void)beginTouch {
+  NSLog(@"beginTouch");
   self.font = [UIFont fontWithName:kFontSonata size:kSymbolFontSize * kTouchScaleFactor];
   self.ledgerLine.font = [UIFont fontWithName:kFontSonata size:kSymbolFontSize * kTouchScaleFactor];
   [self repositionTouchSubview];
@@ -112,7 +113,13 @@
     [self modifyGivenSymbol:self.mySymbol resize:NO];
   }
   
-  self.center = self.homePosition;
+  self.userInteractionEnabled = NO;
+  [UIView animateWithDuration:kAnimationDuration animations:^{
+    self.center = self.homePosition;
+  } completion:^(BOOL finished) {
+    self.userInteractionEnabled = YES;
+  }];
+  
   [self repositionTouchSubview];
 }
 
@@ -134,7 +141,7 @@
 }
 
 -(void)instantiateTouchSubview {
-  self.touchSubview = [[TouchSubview alloc] initWithFrame:CGRectMake(0, 0, kTouchSubviewRadius * 2, kTouchSubviewRadius * 2)];
+  self.touchSubview = [[TouchSubview alloc] initWithFrame:CGRectMake(0, 0, kTouchSubviewRadius * 2, kTouchSubviewRadius * 4)];
   [self addSubview:self.touchSubview];
   [self repositionTouchSubview];
 }
@@ -144,10 +151,11 @@
     // testing purposes
   self.touchSubview.layer.borderColor = [UIColor redColor].CGColor;
   self.touchSubview.layer.borderWidth = 0.5;
-  self.touchSubview.layer.cornerRadius = kTouchSubviewRadius;
+  self.touchSubview.layer.cornerRadius = kTouchSubviewRadius / 2;
   self.touchSubview.clipsToBounds = YES;
   
-  self.touchSubview.center = CGPointMake(self.frame.size.width / 2, (self.frame.size.height + kStaveHeight) / 2);
+  self.touchSubview.center = CGPointMake(self.frame.size.width / 2,
+                                         (self.frame.size.height + kStaveHeight) / 2 + kTouchSubviewRadius * 3/4);
 }
 
 -(BOOL)determineIfTouchableWithSymbol:(MusicSymbol)symbol {
@@ -214,6 +222,15 @@
   }
   unichar myChar[1] = {(unichar)charIndex};
   return [NSString stringWithCharacters:myChar length:1];
+}
+
+-(UIView *)hitTest:(CGPoint)point withEvent:(UIEvent *)event {
+  UIView *result = [super hitTest:point withEvent:event];
+  if ([result isKindOfClass:TouchSubview.class]) {
+    return result;
+  } else {
+    return nil;
+  }
 }
 
 @end

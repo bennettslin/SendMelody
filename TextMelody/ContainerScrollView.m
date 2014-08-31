@@ -7,34 +7,53 @@
 //
 
 #import "ContainerScrollView.h"
+#import "SymbolView.h"
+
+@interface ContainerScrollView ()
+
+@end
 
 @implementation ContainerScrollView
 
 -(instancetype)initWithFrame:(CGRect)frame {
-    self = [super initWithFrame:frame];
-    if (self) {
-        // Initialization code
-    }
-    return self;
+  self = [super initWithFrame:frame];
+  if (self) {
+      // Initialization code
+  }
+  return self;
+}
+
+  // this is the magic method that allows notes on staves to register touch immediately
+-(UIView *)hitTest:(CGPoint)point withEvent:(UIEvent *)event {
+  UIView *result = [super hitTest:point withEvent:event];
+  self.scrollEnabled = ![result.superview isKindOfClass:[SymbolView class]];
+  return result;
+}
+
+-(BOOL)touchesShouldBegin:(NSSet *)touches withEvent:(UIEvent *)event inContentView:(UIView *)view {
+  CGPoint locationPoint = [[touches anyObject] locationInView:view];
+  UIView *touchedView = [view hitTest:locationPoint withEvent:event];
+
+  if ([touchedView.superview isKindOfClass:SymbolView.class]) {
+    SymbolView *note = (SymbolView *)touchedView.superview;
+    [note beginTouch];
+  }
+  return YES;
 }
 
 -(void)touchesBegan:(NSSet *)touches withEvent:(UIEvent *)event {
-//  [super touchesBegan:touches withEvent:event];
   [self.customDelegate touchesBegan:touches withEvent:event];
 }
 
 -(void)touchesMoved:(NSSet *)touches withEvent:(UIEvent *)event {
-//  [super touchesMoved:touches withEvent:event];
   [self.customDelegate touchesMoved:touches withEvent:event];
 }
 
 -(void)touchesCancelled:(NSSet *)touches withEvent:(UIEvent *)event {
-//  [super touchesCancelled:touches withEvent:event];
   [self.customDelegate touchesCancelled:touches withEvent:event];
 }
 
 -(void)touchesEnded:(NSSet *)touches withEvent:(UIEvent *)event {
-//  [super touchesEnded:touches withEvent:event];
   [self.customDelegate touchesEnded:touches withEvent:event];
 }
 
