@@ -30,11 +30,11 @@
     self.textColor = kSymbolColour;
     if ([self determineIfTouchableWithSymbol:symbol]) {
       self.userInteractionEnabled = YES;
-      [self modifyGivenSymbol:symbol resize:YES]; // must be between these two
+      [self modifyGivenSymbol:symbol]; // must be between these two
       [self instantiateLedgerLine];
       [self instantiateTouchSubview];
     } else {
-      [self modifyGivenSymbol:symbol resize:YES];
+      [self modifyGivenSymbol:symbol];
     }
     
       // testing purposes
@@ -49,23 +49,21 @@
   return self;
 }
 
--(void)modifyGivenSymbol:(MusicSymbol)symbol resize:(BOOL)resize {
+-(void)modifyGivenSymbol:(MusicSymbol)symbol {
   self.mySymbol = symbol;
   self.text = [self stringForMusicSymbol:symbol];
-  
-  if (resize) {
+
+  if (self.userInteractionEnabled) {
+    self.attributedText = [self verticallyAlignString:self.text];
+    CGRect frame = CGRectMake(self.frame.origin.x, self.frame.origin.y,
+                              kTouchSubviewRadius * 2, kTouchSubviewRadius * 6);
+    self.frame = frame;
     
-    if (self.userInteractionEnabled) {
-      CGRect frame = CGRectMake(self.frame.origin.x, self.frame.origin.y,
-                                kTouchSubviewRadius * 2, kTouchSubviewRadius * 6);
-      self.frame = frame;
-      
-    } else if (self.mySymbol == kLedgerLine) {
-      self.frame = CGRectMake(0, 0, self.superview.frame.size.width, self.superview.frame.size.height);
-      
-    } else {
-      [self sizeToFit];
-    }
+  } else if (self.mySymbol == kLedgerLine) {
+    self.frame = CGRectMake(0, 0, self.superview.frame.size.width, self.superview.frame.size.height);
+    
+  } else {
+    [self sizeToFit];
   }
 }
 
@@ -87,18 +85,19 @@
       break;
   }
   
-  [self modifyGivenSymbol:self.mySymbol resize:NO];
+  [self modifyGivenSymbol:self.mySymbol];
   [self repositionTouchSubview];
 }
 
 -(void)beginTouch {
-  NSLog(@"beginTouch");
+//  self.touched = YES;
   self.font = [UIFont fontWithName:kFontSonata size:kSymbolFontSize * kTouchScaleFactor];
   self.ledgerLine.font = [UIFont fontWithName:kFontSonata size:kSymbolFontSize * kTouchScaleFactor];
   [self repositionTouchSubview];
 }
 
 -(void)endTouch {
+//  self.touched = NO;
   self.font = [UIFont fontWithName:kFontSonata size:kSymbolFontSize];
   self.ledgerLine.font = [UIFont fontWithName:kFontSonata size:kSymbolFontSize];
   [self repositionTouchSubview];
@@ -106,11 +105,11 @@
 
 -(void)sendHomeToRack {
   if (self.mySymbol == kQuarterNoteStemDown) {
-    [self modifyGivenSymbol:kQuarterNoteStemUp resize:NO];
+    [self modifyGivenSymbol:kQuarterNoteStemUp];
   } else if (self.mySymbol == kHalfNoteStemDown) {
-    [self modifyGivenSymbol:kHalfNoteStemUp resize:NO];
+    [self modifyGivenSymbol:kHalfNoteStemUp];
   } else {
-    [self modifyGivenSymbol:self.mySymbol resize:NO];
+    [self modifyGivenSymbol:self.mySymbol];
   }
   
   self.userInteractionEnabled = NO;
@@ -133,7 +132,7 @@
   self.ledgerLine.hidden = YES;
   
   [self addSubview:self.ledgerLine];
-  [self.ledgerLine modifyGivenSymbol:kLedgerLine resize:YES];
+  [self.ledgerLine modifyGivenSymbol:kLedgerLine];
 }
 
 -(void)showLedgerLine:(BOOL)show {
@@ -156,6 +155,16 @@
   
   self.touchSubview.center = CGPointMake(self.frame.size.width / 2,
                                          (self.frame.size.height + kStaveHeight) / 2 + kTouchSubviewRadius * 3/4);
+}
+
+-(NSAttributedString *)verticallyAlignString:(NSString *)string {
+
+  NSMutableAttributedString *attString = [[NSMutableAttributedString alloc] initWithString:string];
+  [attString addAttribute:NSBaselineOffsetAttributeName
+                    value:@(kStaveHeight/2 + kStaveYAdjust * 1.125)
+                    range:NSMakeRange(0, string.length)];
+  
+  return attString;
 }
 
 -(BOOL)determineIfTouchableWithSymbol:(MusicSymbol)symbol {
@@ -224,6 +233,7 @@
   return [NSString stringWithCharacters:myChar length:1];
 }
 
+  // this allows touching above stem to register as scrollView touch
 -(UIView *)hitTest:(CGPoint)point withEvent:(UIEvent *)event {
   UIView *result = [super hitTest:point withEvent:event];
   if ([result isKindOfClass:TouchSubview.class]) {
@@ -231,6 +241,11 @@
   } else {
     return nil;
   }
+}
+
+-(void)drawRect:(CGRect)rect {
+  [super drawRect:rect];
+  
 }
 
 @end

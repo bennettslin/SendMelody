@@ -8,6 +8,7 @@
 
 #import "StavesView.h"
 #import "Constants.h"
+#import "TouchSubview.h"
 
 #define kHeightWholeStep
 

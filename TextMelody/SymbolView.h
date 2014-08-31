@@ -14,9 +14,10 @@
 @property (nonatomic) MusicSymbol mySymbol;
 @property (nonatomic) CGPoint homePosition;
 @property (nonatomic) BOOL onStaves;
+//@property (nonatomic) BOOL touched;
 
 -(instancetype)initWithSymbol:(MusicSymbol)symbol;
--(void)modifyGivenSymbol:(MusicSymbol)symbol resize:(BOOL)resize;
+-(void)modifyGivenSymbol:(MusicSymbol)symbol;
 
 -(void)beginTouch;
 -(void)endTouch;
