@@ -90,14 +90,12 @@
 }
 
 -(void)beginTouch {
-//  self.touched = YES;
   self.font = [UIFont fontWithName:kFontSonata size:kSymbolFontSize * kTouchScaleFactor];
   self.ledgerLine.font = [UIFont fontWithName:kFontSonata size:kSymbolFontSize * kTouchScaleFactor];
   [self repositionTouchSubview];
 }
 
 -(void)endTouch {
-//  self.touched = NO;
   self.font = [UIFont fontWithName:kFontSonata size:kSymbolFontSize];
   self.ledgerLine.font = [UIFont fontWithName:kFontSonata size:kSymbolFontSize];
   [self repositionTouchSubview];
@@ -161,7 +159,7 @@
 
   NSMutableAttributedString *attString = [[NSMutableAttributedString alloc] initWithString:string];
   [attString addAttribute:NSBaselineOffsetAttributeName
-                    value:@(kStaveHeight/2 + kStaveYAdjust * 1.125)
+                    value:@(kStaveHeight/2 + kStaveYAdjust)
                     range:NSMakeRange(0, string.length)];
   
   return attString;
@@ -241,11 +239,6 @@
   } else {
     return nil;
   }
-}
-
--(void)drawRect:(CGRect)rect {
-  [super drawRect:rect];
-  
 }
 
 @end

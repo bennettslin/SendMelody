@@ -43,18 +43,9 @@
   _screenWidth = [UIScreen mainScreen].bounds.size.height;
   _screenHeight = [UIScreen mainScreen].bounds.size.width;
   
-    // empty staves
-  self.StuffOnStaves = [NSMutableArray new];
-  for (int i = 0; i < 4; i++) {
-    SymbolView *wholeRest = [[SymbolView alloc] initWithSymbol:kWholeNoteRest];
-    [self.StuffOnStaves addObject:wholeRest];
-    if (i < 3) {
-      SymbolView *barline = [[SymbolView alloc] initWithSymbol:kBarline];
-      [self.StuffOnStaves addObject:barline];
-    }
-  }
-  
   [self loadFixedViews];
+  [self instantiateStuffOnStaves];
+  [self repositionStuffOnStaves];
   [self instantiateNewNoteWithSymbol:kQuarterNoteStemUp];
   [self instantiateNewNoteWithSymbol:kHalfNoteStemUp];
   [self instantiateNewNoteWithSymbol:kWholeNote];
@@ -69,8 +60,39 @@
   self.touchedNoteMoved = NO;
 }
 
+-(void)instantiateStuffOnStaves {
+
+  self.StuffOnStaves = [NSMutableArray new];
+  
+  for (int i = 0; i < 4; i++) {
+    SymbolView *wholeRest = [[SymbolView alloc] initWithSymbol:kWholeNoteRest];
+    wholeRest.center = CGPointMake(0, kStaveHeight * 5);
+    [self.StuffOnStaves addObject:wholeRest];
+    
+    if (i < 3) {
+      SymbolView *barline = [[SymbolView alloc] initWithSymbol:kBarline];
+      barline.center = CGPointMake(0, kStaveHeight * 7.5);
+      [self.StuffOnStaves addObject:barline];
+    }
+  }
+}
+
 -(void)repositionStuffOnStaves {
   
+  CGFloat leftBuffer = self.clef.frame.size.width + _keySigWidth;
+  CGFloat range = kStaveWidth - leftBuffer - self.endBarline.frame.size.width;
+  
+  CGFloat rangeSlot = range / (self.StuffOnStaves.count + 1);
+  
+  for (int i = 0; i < self.StuffOnStaves.count; i++) {
+    
+    SymbolView *symbol = self.StuffOnStaves[i];
+    symbol.center = CGPointMake(leftBuffer + (i + 1) * rangeSlot, symbol.center.y);
+    
+    if (!symbol.superview) {
+      [self.stavesView addSubview:symbol];
+    }
+  }
   
   
 }
@@ -79,7 +101,7 @@
   
   if (kIsIPhone) {
     ContainerScrollView *scrollView = [[ContainerScrollView alloc] initWithFrame:CGRectMake(0, 0, _screenWidth, _screenHeight)];
-    scrollView.center = self.view.center;
+    
     scrollView.contentSize = CGSizeMake(kStaveWidth, _screenHeight);
     scrollView.customDelegate = self;
     [self.view addSubview:scrollView];
@@ -87,11 +109,12 @@
   } else {
     self.containerView = self.view;
   }
-  
-  self.containerView.center = CGPointMake(_screenWidth / 2, _screenHeight / 2);
 
   self.stavesView = [[StavesView alloc] initWithFrame:CGRectMake(0, 0, kStaveWidth, kContainerContentHeight)];
   self.stavesView.center = CGPointMake(kStaveWidth / 2, _screenHeight / 3);
+  
+  self.stavesView.layer.borderColor = [UIColor redColor].CGColor;
+  self.stavesView.layer.borderWidth = 2.f;
   
   [self.containerView addSubview:self.stavesView];
   
@@ -159,20 +182,39 @@
 -(BOOL)decideWhetherToAddTouchedNoteToStaves {
   
     // note is within staves
-  if (self.tempStaveIndexForTouchedNote > 3 && self.tempStaveIndexForTouchedNote < 20) {
+  if (self.tempStaveIndexForTouchedNote > 4 && self.tempStaveIndexForTouchedNote < 20) {
     
-      // add to containerView
-
-    CGPoint selfPoint = CGPointMake(self.touchedNote.center.x,
-                                    [self stavePositionForStaveIndex:self.tempStaveIndexForTouchedNote]);
-    
+    CGPoint selfPoint;
     CGPoint stavesPoint;
     
+      // already added to stavesView
     if ([self touchedNoteBelongsOnStaves]) {
-      stavesPoint = selfPoint;
       
-    } else {
+      CGFloat buffer;
+      if (kIsIPhone) {
+        ContainerScrollView *containerScrollView = (ContainerScrollView *)self.containerView;
+        buffer = containerScrollView.contentOffset.x;
+      }
+      
+      selfPoint = CGPointMake(self.touchedNote.center.x - buffer,
+                              [self stavePositionForStaveIndex:self.tempStaveIndexForTouchedNote]);
       stavesPoint = [self getStavesViewLocationForSelfLocation:selfPoint];
+      
+      
+        // not yet added to stavesView
+    } else {
+      
+      CGFloat buffer;
+      if (kIsIPhone) {
+        ContainerScrollView *containerScrollView = (ContainerScrollView *)self.containerView;
+        buffer = containerScrollView.contentOffset.x;
+      }
+
+      selfPoint = CGPointMake(self.touchedNote.center.x + buffer,
+                              [self stavePositionForStaveIndex:self.tempStaveIndexForTouchedNote]);
+      stavesPoint = [self getStavesViewLocationForSelfLocation:selfPoint];
+      
+      self.touchedNote.homePosition = CGPointMake(CGFLOAT_MAX, CGFLOAT_MAX);
       
         // add touched note to array
       [self.StuffOnStaves addObject:self.touchedNote];
@@ -182,8 +224,7 @@
     }
     
     self.touchedNote.center = stavesPoint;
-    self.touchedNote.homePosition = CGPointMake(CGFLOAT_MAX, CGFLOAT_MAX);
-    [self.containerView addSubview:self.touchedNote];
+    [self.stavesView addSubview:self.touchedNote];
     
     return YES;
     
@@ -202,23 +243,19 @@
   }
 }
 
--(CGPoint)recenterTouchedNoteWithLocationPoint:(CGPoint)locationPoint ended:(BOOL)ended {
-  
-//  CGFloat buffer = self.touchedNote.touched ? ((kStaveHeight * kTouchScaleFactor) - kStaveHeight) : 0;
-  
-  CGPoint touchLocation = (self.touchedNote.superview == self.view && !ended) ?
-  locationPoint : [self getStavesViewLocationForSelfLocation:locationPoint];
-  self.touchedNote.center = CGPointMake(self.touchOffset.dx + touchLocation.x,
-                                        self.touchOffset.dy + touchLocation.y);
-  return self.touchedNote.center;
+-(CGPoint)adjustForTouchOffsetLocationPoint:(CGPoint)locationPoint {
+
+  CGPoint touchLocation = locationPoint;
+  return CGPointMake(self.touchOffset.dx + touchLocation.x,
+                     self.touchOffset.dy + touchLocation.y);
 }
 
 -(void)changeTouchedNoteStemDirectionIfNecessary {
   
-  if ((self.tempStaveIndexForTouchedNote < 12 &&
+  if ((self.tempStaveIndexForTouchedNote < 13 &&
        (self.touchedNote.mySymbol == kQuarterNoteStemUp || self.touchedNote.mySymbol == kHalfNoteStemUp)) ||
-      (self.tempStaveIndexForTouchedNote >= 12 &&
-       (self.touchedNote.mySymbol == kQuarterNoteStemDown || self.touchedNote.mySymbol == kHalfNoteStemDown))) {\
+      (self.tempStaveIndexForTouchedNote >= 13 &&
+       (self.touchedNote.mySymbol == kQuarterNoteStemDown || self.touchedNote.mySymbol == kHalfNoteStemDown))) {
         
     [self.touchedNote changeStemDirection];
   }
@@ -229,8 +266,9 @@
 #pragma mark - touch methods
 
 -(void)touchesBegan:(NSSet *)touches withEvent:(UIEvent *)event {
-  CGPoint locationPoint = [[touches anyObject] locationInView:self.view];
-  UIView *touchedView = [self.view hitTest:locationPoint withEvent:event];
+  
+  CGPoint touchPoint = [[touches anyObject] locationInView:self.view];
+  UIView *touchedView = [self.view hitTest:touchPoint withEvent:event];
 
 //  NSLog(@"touched view is %@", touchedView);
   
@@ -240,13 +278,11 @@
       [self.touchedNote beginTouch];
       
         // center to account for touch offset
-      CGPoint touchLocation = self.touchedNote.superview == self.view ?
-      locationPoint : [self getStavesViewLocationForSelfLocation:locationPoint];
-      self.touchOffset = CGVectorMake(self.touchedNote.center.x - touchLocation.x,
-                                      self.touchedNote.center.y - touchLocation.y);
-      [self recenterTouchedNoteWithLocationPoint:touchLocation ended:NO];
+      CGPoint realPoint = [self getStavesViewLocationForSelfLocation:touchPoint];
+      self.touchOffset = CGVectorMake(self.touchedNote.center.x - realPoint.x,
+                                      self.touchedNote.center.y - realPoint.y);
       
-      self.tempStaveIndexForTouchedNote = [self staveIndexForNoteCenter:locationPoint];
+//      self.tempStaveIndexForTouchedNote = [self staveIndexForNoteCenter:realPoint];
     }
   }
 }
@@ -256,9 +292,12 @@
     self.touchedNoteMoved = YES;
     
       // recenter
-    CGPoint locationPoint = [[touches anyObject] locationInView:self.view];
-    CGPoint noteCenter = [self recenterTouchedNoteWithLocationPoint:locationPoint ended:NO];
-    self.tempStaveIndexForTouchedNote = [self staveIndexForNoteCenter:noteCenter];
+    CGPoint touchPoint = [[touches anyObject] locationInView:self.view];
+    CGPoint noteCenter = [self adjustForTouchOffsetLocationPoint:touchPoint];
+    CGPoint realCenter = [self getStavesViewLocationForSelfLocation:noteCenter];
+    self.touchedNote.center = realCenter;
+    self.tempStaveIndexForTouchedNote = [self staveIndexForNoteCenter:realCenter];
+    NSLog(@"staveIndex is %i", self.tempStaveIndexForTouchedNote);
     
           // change stem direction if necessary
     [self changeTouchedNoteStemDirectionIfNecessary];
@@ -271,19 +310,16 @@
     [self.touchedNote endTouch];
     
     if (self.touchedNoteMoved) {
-        // recenter
-      CGPoint locationPoint = [[touches anyObject] locationInView:self.view];
-      CGPoint noteCenter = [self recenterTouchedNoteWithLocationPoint:locationPoint ended:YES];
-      self.tempStaveIndexForTouchedNote = [self staveIndexForNoteCenter:noteCenter];
       
         // check whether to add to staves
       [self decideWhetherToAddTouchedNoteToStaves];
-      
       self.touchedNoteMoved = NO;
     }
     
     self.touchedNote = nil;
   }
+  
+//  [self generateImageFromStavesView];
 }
 
 #pragma mark - keySig methods
@@ -371,16 +407,21 @@
 }
 
 -(CGFloat)stavePositionForStaveIndex:(NSUInteger)staveIndex {
-  return (staveIndex * kStaveHeight / 2) +
-  _screenHeight / 3 - self.stavesView.frame.size.height / 2;
+  return ((staveIndex) * kStaveHeight / 2);
 }
 
 -(NSInteger)staveIndexForNoteCenter:(CGPoint)noteCenter {
 
-  CGFloat yOrigin = _screenHeight / 3 - self.stavesView.frame.size.height / 2;
+  CGFloat yOrigin = 0;
+  
+  if ([self touchedNoteBelongsOnStaves]) {
+    yOrigin = 0;
+  } else {
+    yOrigin = _screenHeight / 3 - self.stavesView.frame.size.height / 2;
+  }
+  
   CGFloat noteCenterRelativeToYOrigin = noteCenter.y - yOrigin;
-  NSInteger staveIndex = ((noteCenterRelativeToYOrigin + kStaveHeight / 2) / (kStaveHeight / 2));
-//  NSLog(@"staveIndex %li", (long)staveIndex);
+  NSInteger staveIndex = ((noteCenterRelativeToYOrigin + kStaveHeight * .25f) / (kStaveHeight / 2.f));
 
     // establish whether to show ledger line here
   [self.touchedNote showLedgerLine:(staveIndex < 6 || staveIndex > 16)];
@@ -389,14 +430,39 @@
 }
 
 -(CGPoint)getStavesViewLocationForSelfLocation:(CGPoint)selfLocation {
+  
   CGFloat xPosition;
-  if (kIsIPhone) {
+  
+  if (kIsIPhone && [self touchedNoteBelongsOnStaves]) {
     UIScrollView *scrollView = (UIScrollView *)self.containerView;
     xPosition = selfLocation.x + scrollView.contentOffset.x;
   } else {
     xPosition = selfLocation.x;
   }
+
   return CGPointMake(xPosition, selfLocation.y);
+}
+
+#pragma mark - image methods
+
+-(void)generateImageFromStavesView {
+  UIImage *image;
+  
+  UIGraphicsBeginImageContext(self.stavesView.frame.size);
+  [self.stavesView.layer renderInContext:UIGraphicsGetCurrentContext()];
+  image = UIGraphicsGetImageFromCurrentImageContext();
+  
+  UIGraphicsEndImageContext();
+  UIImageWriteToSavedPhotosAlbum(image, self, @selector(image:didFinishSavingWithError:contextInfo:), nil);
+}
+
+- (void)image:(UIImage *)image didFinishSavingWithError:(NSError *)error
+  contextInfo:(void *)contextInfo {
+  if (error) {
+    NSLog(@"error %@", error);
+  } else {
+    NSLog(@"no error");
+  }
 }
 
 #pragma mark - system methods

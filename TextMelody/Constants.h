@@ -15,16 +15,16 @@
 #define kSymbolFontSize (kStaveHeight * 4)
 #define kSymbolColour [UIColor blackColor]
 
-#define kStaveWidth 768.f // this must be 768 or less
+#define kStaveWidth 1024.f // this must be 768 or less
 #define kStaveWidthMargin (kStaveWidth * 0.025)
-#define kStaveHeight (kIsIPhone ? 16.f : 40.f)
+#define kStaveHeight (kIsIPhone ? 16.f : 16.f) // test
 #define kContainerContentHeight (kStaveHeight * 12)
 
 #define kStaveColour [UIColor blackColor]
 #define kStaveLineDensity 0.75f
 #define kStaveYAdjust (kStaveHeight * -0.1f)
 
-#define kTouchScaleFactor 1.5
+#define kTouchScaleFactor 1.25
 #define kTouchSubviewRadius 30.f
 
 #define kAnimationDuration 0.15f
