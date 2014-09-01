@@ -13,7 +13,7 @@
 #import "SymbolView.h"
 #import <MessageUI/MessageUI.h>
 
-@interface ViewController () <UIScrollViewDelegate, ContainerDelegate, MFMailComposeViewControllerDelegate>
+@interface ViewController () <UIScrollViewDelegate, ContainerDelegate, MFMailComposeViewControllerDelegate, MFMessageComposeViewControllerDelegate>
 
 @property (strong, nonatomic) StavesView *stavesView;
 @property (strong, nonatomic) SymbolView *clef;
@@ -31,6 +31,7 @@
 @property (nonatomic) BOOL touchedNoteMoved;
 
 @property (strong, nonatomic) UIButton *mailButton;
+@property (strong, nonatomic) UIButton *textButton;
 
 @end
 
@@ -54,6 +55,8 @@
   [self instantiateNewNoteWithSymbol:kWholeNote];
 
   [self instantiateMailButton];
+  [self instantiateTextButoon];
+
 }
 
 -(void)viewWillAppear:(BOOL)animated {
@@ -61,6 +64,9 @@
   
   self.mailButton.hidden = ![MFMailComposeViewController canSendMail];
   self.mailButton.enabled = [MFMailComposeViewController canSendMail];
+
+  self.textButton.hidden = ![MFMessageComposeViewController canSendText];
+  self.textButton.enabled = [MFMessageComposeViewController canSendText];
 }
 
 -(void)viewWillDisappear:(BOOL)animated {
@@ -76,6 +82,16 @@
                       action:@selector(mailButtonTapped)
             forControlEvents:UIControlEventTouchUpInside];
   [self.view addSubview:self.mailButton];
+}
+
+-(void)instantiateTextButoon {
+  self.textButton = [[UIButton alloc] initWithFrame:CGRectMake(_screenWidth - 100, _screenHeight - 50, 50, 50)];
+  self.textButton.backgroundColor = [UIColor blueColor];
+  [self.textButton setTitle:@"mail" forState:UIControlStateNormal];
+  [self.textButton addTarget:self
+                      action:@selector(textButtonTapped)
+            forControlEvents:UIControlEventTouchUpInside];
+  [self.view addSubview:self.textButton];
 }
 
 -(void)instantiateStuffOnStaves {
@@ -461,7 +477,7 @@
   return CGPointMake(xPosition, selfLocation.y);
 }
 
-#pragma mark - mail button methods
+#pragma mark - mail methods
 
 -(void)mailButtonTapped {
   
@@ -471,11 +487,10 @@
     
     [mailVC setSubject:@"Sending you a melody"];
     [mailVC setMessageBody:@"Hi!" isHTML:NO];
-    [mailVC setToRecipients:nil];
     
-    NSData *imageData = [self generateImageFromStavesView];
     
       // Add attachment
+    NSData *imageData = [self generateImageFromStavesView];
     [mailVC addAttachmentData:imageData mimeType:@"image/png" fileName:@"melody"];
     
     [self presentViewController:mailVC animated:YES completion:NULL];
@@ -483,10 +498,6 @@
   } else {
     [self showCantSendMailAlert];
   }
-}
-
--(void)showCantSendMailAlert {
-  
 }
 
 -(void) mailComposeController:(MFMailComposeViewController *)controller
@@ -511,6 +522,71 @@
   
     // Close the Mail Interface
   [self dismissViewControllerAnimated:YES completion:NULL];
+}
+
+-(void)showCantSendMailAlert {
+  
+}
+
+#pragma mark - text methods
+
+-(void)textButtonTapped {
+  if([MFMessageComposeViewController canSendText]) {
+    NSString *message = @"Hi";
+    
+    MFMessageComposeViewController *textVC = [[MFMessageComposeViewController alloc] init];
+    textVC.messageComposeDelegate = self;
+    
+    [MFMessageComposeViewController canSendSubject] ?
+        [textVC setSubject:@"Sending you a melody"] : nil;
+    
+    if ([MFMessageComposeViewController canSendAttachments] &&
+        [MFMessageComposeViewController isSupportedAttachmentUTI:@"public.data"]) {
+      
+        // Add attachment
+      NSData *imageData = [self generateImageFromStavesView];
+      [textVC addAttachmentData:imageData typeIdentifier:@"public.data" filename:@"melody.png"];
+    }
+    
+    [textVC setBody:message];
+    
+      // Present message view controller on screen
+    [self presentViewController:textVC animated:YES completion:nil];
+    
+  } else {
+    
+    [self showCantSendTextAlert];
+  }
+}
+
+-(void)messageComposeViewController:(MFMessageComposeViewController *)controller
+                didFinishWithResult:(MessageComposeResult)result {
+  switch (result) {
+    case MessageComposeResultCancelled:
+      NSLog(@"Text message cancelled");
+      break;
+      
+    case MessageComposeResultFailed:
+    {
+    UIAlertView *warningAlert = [[UIAlertView alloc] initWithTitle:@"Error" message:@"Failed to send SMS!" delegate:nil cancelButtonTitle:@"OK" otherButtonTitles:nil];
+    [warningAlert show];
+    break;
+    }
+      
+    case MessageComposeResultSent:
+      NSLog(@"Text message sent");
+      break;
+      
+    default:
+      break;
+  }
+  
+  [self dismissViewControllerAnimated:YES completion:nil];
+}
+
+-(void)showCantSendTextAlert {
+  UIAlertView *warningAlert = [[UIAlertView alloc] initWithTitle:@"Error" message:@"Your device doesn't support SMS!" delegate:nil cancelButtonTitle:@"OK" otherButtonTitles:nil];
+  [warningAlert show];
 }
 
 #pragma mark - image methods
@@ -539,12 +615,6 @@
 -(void)touchesCancelled:(NSSet *)touches withEvent:(UIEvent *)event {
   [self touchesEnded:touches withEvent:event];
 }
-
-//-(UIView *)hitTest:(CGPoint)point withEvent:(UIEvent *)event {
-//  UIView *result = [self.view hitTest:point withEvent:event];
-//  NSLog(@"touch result is %@", result);
-//  return result;
-//}
 
 -(void)didReceiveMemoryWarning {
   [super didReceiveMemoryWarning];
