@@ -55,7 +55,7 @@
   [self instantiateNewNoteWithSymbol:kWholeNote];
 
   [self instantiateMailButton];
-  [self instantiateTextButoon];
+  [self instantiateTextButton];
 
 }
 
@@ -84,10 +84,10 @@
   [self.view addSubview:self.mailButton];
 }
 
--(void)instantiateTextButoon {
+-(void)instantiateTextButton {
   self.textButton = [[UIButton alloc] initWithFrame:CGRectMake(_screenWidth - 100, _screenHeight - 50, 50, 50)];
   self.textButton.backgroundColor = [UIColor blueColor];
-  [self.textButton setTitle:@"mail" forState:UIControlStateNormal];
+  [self.textButton setTitle:@"text" forState:UIControlStateNormal];
   [self.textButton addTarget:self
                       action:@selector(textButtonTapped)
             forControlEvents:UIControlEventTouchUpInside];
@@ -303,8 +303,6 @@
   
   CGPoint touchPoint = [[touches anyObject] locationInView:self.view];
   UIView *touchedView = [self.view hitTest:touchPoint withEvent:event];
-
-//  NSLog(@"touched view is %@", touchedView);
   
   if ([touchedView.superview isKindOfClass:SymbolView.class]) {
     if (!self.touchedNote) {
@@ -315,8 +313,6 @@
       CGPoint realPoint = [self getStavesViewLocationForSelfLocation:touchPoint];
       self.touchOffset = CGVectorMake(self.touchedNote.center.x - realPoint.x,
                                       self.touchedNote.center.y - realPoint.y);
-      
-//      self.tempStaveIndexForTouchedNote = [self staveIndexForNoteCenter:realPoint];
     }
   }
 }
@@ -352,8 +348,6 @@
     
     self.touchedNote = nil;
   }
-  
-//  [self generateImageFromStavesView];
 }
 
 #pragma mark - keySig methods
@@ -488,9 +482,8 @@
     [mailVC setSubject:@"Sending you a melody"];
     [mailVC setMessageBody:@"Hi!" isHTML:NO];
     
-    
       // Add attachment
-    NSData *imageData = [self generateImageFromStavesView];
+    NSData *imageData = [self generatePNGDataFromStavesView];
     [mailVC addAttachmentData:imageData mimeType:@"image/png" fileName:@"melody"];
     
     [self presentViewController:mailVC animated:YES completion:NULL];
@@ -532,29 +525,28 @@
 
 -(void)textButtonTapped {
   if([MFMessageComposeViewController canSendText]) {
-    NSString *message = @"Hi";
     
     MFMessageComposeViewController *textVC = [[MFMessageComposeViewController alloc] init];
     textVC.messageComposeDelegate = self;
     
-    [MFMessageComposeViewController canSendSubject] ?
-        [textVC setSubject:@"Sending you a melody"] : nil;
+      // include subject if possible
+//    [MFMessageComposeViewController canSendSubject] ?
+//        [textVC setSubject:@"Sending you a melody"] : nil;
     
+      // attach image if possible
     if ([MFMessageComposeViewController canSendAttachments] &&
         [MFMessageComposeViewController isSupportedAttachmentUTI:@"public.data"]) {
       
-        // Add attachment
-      NSData *imageData = [self generateImageFromStavesView];
+      NSData *imageData = [self generatePNGDataFromStavesView];
       [textVC addAttachmentData:imageData typeIdentifier:@"public.data" filename:@"melody.png"];
     }
     
-    [textVC setBody:message];
+    [textVC setBody:@"melodySent://badaboop/bing/bang/boom"];
     
       // Present message view controller on screen
     [self presentViewController:textVC animated:YES completion:nil];
     
   } else {
-    
     [self showCantSendTextAlert];
   }
 }
@@ -591,7 +583,7 @@
 
 #pragma mark - image methods
 
--(NSData *)generateImageFromStavesView {
+-(NSData *)generatePNGDataFromStavesView {
   UIImage *image;
   UIGraphicsBeginImageContext(self.stavesView.frame.size);
   [self.stavesView.layer renderInContext:UIGraphicsGetCurrentContext()];

@@ -13,7 +13,19 @@
 @end
 
 @implementation AppDelegate
-            
+
+-(BOOL)application:(UIApplication *)application openURL:(NSURL *)url
+    sourceApplication:(NSString *)sourceApplication annotation:(id)annotation {
+  
+  if ([sourceApplication isEqualToString:@"com.bennettslin.MelodySent"]) {
+    
+    NSLog(@"URL pathComponents: %@", [url pathComponents]);
+    return YES;
+    
+  } else {
+    return NO;
+  }
+}
 
 - (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions {
   // Override point for customization after application launch.
