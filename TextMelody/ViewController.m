@@ -11,8 +11,9 @@
 #import "ContainerScrollView.h"
 #import "StavesView.h"
 #import "SymbolView.h"
+#import <MessageUI/MessageUI.h>
 
-@interface ViewController () <UIScrollViewDelegate, ContainerDelegate>
+@interface ViewController () <UIScrollViewDelegate, ContainerDelegate, MFMailComposeViewControllerDelegate>
 
 @property (strong, nonatomic) StavesView *stavesView;
 @property (strong, nonatomic) SymbolView *clef;
@@ -28,6 +29,8 @@
 @property (nonatomic) CGVector touchOffset;
 @property (nonatomic) NSInteger tempStaveIndexForTouchedNote;
 @property (nonatomic) BOOL touchedNoteMoved;
+
+@property (strong, nonatomic) UIButton *mailButton;
 
 @end
 
@@ -49,15 +52,30 @@
   [self instantiateNewNoteWithSymbol:kQuarterNoteStemUp];
   [self instantiateNewNoteWithSymbol:kHalfNoteStemUp];
   [self instantiateNewNoteWithSymbol:kWholeNote];
+
+  [self instantiateMailButton];
 }
 
 -(void)viewWillAppear:(BOOL)animated {
   [super viewWillAppear:animated];
+  
+  self.mailButton.hidden = ![MFMailComposeViewController canSendMail];
+  self.mailButton.enabled = [MFMailComposeViewController canSendMail];
 }
 
 -(void)viewWillDisappear:(BOOL)animated {
   self.touchedNote = nil;
   self.touchedNoteMoved = NO;
+}
+
+-(void)instantiateMailButton {
+  self.mailButton = [[UIButton alloc] initWithFrame:CGRectMake(_screenWidth - 50, _screenHeight - 50, 50, 50)];
+  self.mailButton.backgroundColor = [UIColor greenColor];
+  [self.mailButton setTitle:@"mail" forState:UIControlStateNormal];
+  [self.mailButton addTarget:self
+                      action:@selector(mailButtonTapped)
+            forControlEvents:UIControlEventTouchUpInside];
+  [self.view addSubview:self.mailButton];
 }
 
 -(void)instantiateStuffOnStaves {
@@ -443,17 +461,68 @@
   return CGPointMake(xPosition, selfLocation.y);
 }
 
+#pragma mark - mail button methods
+
+-(void)mailButtonTapped {
+  
+  if ([MFMailComposeViewController canSendMail]) {
+    MFMailComposeViewController *mailVC = [[MFMailComposeViewController alloc] init];
+    mailVC.mailComposeDelegate = self;
+    
+    [mailVC setSubject:@"Sending you a melody"];
+    [mailVC setMessageBody:@"Hi!" isHTML:NO];
+    [mailVC setToRecipients:nil];
+    
+    NSData *imageData = [self generateImageFromStavesView];
+    
+      // Add attachment
+    [mailVC addAttachmentData:imageData mimeType:@"image/png" fileName:@"melody"];
+    
+    [self presentViewController:mailVC animated:YES completion:NULL];
+    
+  } else {
+    [self showCantSendMailAlert];
+  }
+}
+
+-(void)showCantSendMailAlert {
+  
+}
+
+-(void) mailComposeController:(MFMailComposeViewController *)controller
+          didFinishWithResult:(MFMailComposeResult)result error:(NSError *)error {
+  
+  switch (result) {
+    case MFMailComposeResultCancelled:
+    NSLog(@"Mail cancelled");
+    break;
+    case MFMailComposeResultSaved:
+    NSLog(@"Mail saved");
+    break;
+    case MFMailComposeResultSent:
+    NSLog(@"Mail sent");
+    break;
+    case MFMailComposeResultFailed:
+    NSLog(@"Mail sent failure: %@", [error localizedDescription]);
+    break;
+    default:
+    break;
+  }
+  
+    // Close the Mail Interface
+  [self dismissViewControllerAnimated:YES completion:NULL];
+}
+
 #pragma mark - image methods
 
--(void)generateImageFromStavesView {
+-(NSData *)generateImageFromStavesView {
   UIImage *image;
-  
   UIGraphicsBeginImageContext(self.stavesView.frame.size);
   [self.stavesView.layer renderInContext:UIGraphicsGetCurrentContext()];
   image = UIGraphicsGetImageFromCurrentImageContext();
-  
   UIGraphicsEndImageContext();
-  UIImageWriteToSavedPhotosAlbum(image, self, @selector(image:didFinishSavingWithError:contextInfo:), nil);
+  
+  return UIImagePNGRepresentation(image);
 }
 
 - (void)image:(UIImage *)image didFinishSavingWithError:(NSError *)error

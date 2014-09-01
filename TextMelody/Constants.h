@@ -22,7 +22,7 @@
 
 #define kStaveColour [UIColor blackColor]
 #define kStaveLineDensity 0.75f
-#define kStaveYAdjust (kStaveHeight * -0.1f)
+#define kStaveYAdjust (kStaveHeight * -0.125f)
 
 #define kTouchScaleFactor 1.25
 #define kTouchSubviewRadius 30.f
