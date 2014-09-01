@@ -6,12 +6,12 @@
 //  Copyright (c) 2014 Bennett Lin. All rights reserved.
 //
 
+#import <MessageUI/MessageUI.h>
 #import "ViewController.h"
 #import "Constants.h"
 #import "ContainerScrollView.h"
 #import "StavesView.h"
 #import "SymbolView.h"
-#import <MessageUI/MessageUI.h>
 
 @interface ViewController () <UIScrollViewDelegate, ContainerDelegate, MFMailComposeViewControllerDelegate, MFMessageComposeViewControllerDelegate>
 
@@ -33,6 +33,8 @@
 @property (strong, nonatomic) UIButton *mailButton;
 @property (strong, nonatomic) UIButton *textButton;
 
+@property (strong, nonatomic) NSMutableDictionary *barlineXPositions;
+
 @end
 
 @implementation ViewController {
@@ -44,6 +46,9 @@
 -(void)viewDidLoad {
   [super viewDidLoad];
   
+  self.barlineXPositions = [[NSMutableDictionary alloc] initWithObjects:@[@0.f, @0.f, @0.f, @0.f, @0.f]
+                                                                forKeys:@[@0, @1, @2, @3, @4]];
+                            
   _screenWidth = [UIScreen mainScreen].bounds.size.height;
   _screenHeight = [UIScreen mainScreen].bounds.size.width;
   
@@ -54,9 +59,7 @@
   [self instantiateNewNoteWithSymbol:kHalfNoteStemUp];
   [self instantiateNewNoteWithSymbol:kWholeNote];
 
-  [self instantiateMailButton];
-  [self instantiateTextButton];
-
+  [self instantiateMessageButtons];
 }
 
 -(void)viewWillAppear:(BOOL)animated {
@@ -74,18 +77,17 @@
   self.touchedNoteMoved = NO;
 }
 
--(void)instantiateMailButton {
-  self.mailButton = [[UIButton alloc] initWithFrame:CGRectMake(_screenWidth - 50, _screenHeight - 50, 50, 50)];
+-(void)instantiateMessageButtons {
+
+  self.mailButton = [[UIButton alloc] initWithFrame:CGRectMake(_screenWidth - kButtonLength, _screenHeight - kButtonLength, kButtonLength, kButtonLength)];
   self.mailButton.backgroundColor = [UIColor greenColor];
   [self.mailButton setTitle:@"mail" forState:UIControlStateNormal];
   [self.mailButton addTarget:self
                       action:@selector(mailButtonTapped)
             forControlEvents:UIControlEventTouchUpInside];
   [self.view addSubview:self.mailButton];
-}
-
--(void)instantiateTextButton {
-  self.textButton = [[UIButton alloc] initWithFrame:CGRectMake(_screenWidth - 100, _screenHeight - 50, 50, 50)];
+  
+  self.textButton = [[UIButton alloc] initWithFrame:CGRectMake(_screenWidth - kButtonLength, _screenHeight - kButtonLength * 2, kButtonLength, kButtonLength)];
   self.textButton.backgroundColor = [UIColor blueColor];
   [self.textButton setTitle:@"text" forState:UIControlStateNormal];
   [self.textButton addTarget:self
@@ -113,10 +115,11 @@
 
 -(void)repositionStuffOnStaves {
   
-  CGFloat leftBuffer = self.clef.frame.size.width + _keySigWidth;
-  CGFloat range = kStaveWidth - leftBuffer - self.endBarline.frame.size.width;
+  CGFloat leftBuffer = [self getXPositionForKey:0];
+  CGFloat range = kStaveWidth - leftBuffer - self.endBarline.frame.size.width / 2 - kStaveWidthMargin; // only half of endBarline width is wider than it seems
   
   CGFloat rangeSlot = range / (self.StuffOnStaves.count + 1);
+  NSUInteger currentBarline = 1;
   
   for (int i = 0; i < self.StuffOnStaves.count; i++) {
     
@@ -126,9 +129,13 @@
     if (!symbol.superview) {
       [self.stavesView addSubview:symbol];
     }
+    
+    
+    if (symbol.mySymbol == kBarline) {
+      [self setXPosition:symbol.center.x forKey:currentBarline];
+      currentBarline++;
+    }
   }
-  
-  
 }
 
 -(void)loadFixedViews {
@@ -168,6 +175,9 @@
   
   self.endBarline = [[SymbolView alloc] initWithSymbol:kEndBarline];
   self.endBarline.center = CGPointMake(kStaveWidth - kStaveWidthMargin - self.endBarline.frame.size.width / 2, kStaveHeight * 7.5 + kStaveYAdjust);
+  
+    // only place to establish last barlineXPosition
+  [self setXPosition:self.endBarline.center.x forKey:4];
   [self.stavesView addSubview:self.endBarline];
 }
 
@@ -213,16 +223,25 @@
 
 #pragma mark - note positioning methods
 
+-(void)constrictStaveIndex {
+    // if 2 or 3, it's 4; if 21 or 22, it's 20
+  if (self.tempStaveIndexForTouchedNote > 1 && self.tempStaveIndexForTouchedNote < 4) {
+    self.tempStaveIndexForTouchedNote = 4;
+  } else if (self.tempStaveIndexForTouchedNote < 23 && self.tempStaveIndexForTouchedNote > 20) {
+    self.tempStaveIndexForTouchedNote = 20;
+  }
+}
+
 -(BOOL)decideWhetherToAddTouchedNoteToStaves {
   
     // note is within staves
-  if (self.tempStaveIndexForTouchedNote > 4 && self.tempStaveIndexForTouchedNote < 20) {
+  if ([self BarForTouchedNote] != NSUIntegerMax) {
     
     CGPoint selfPoint;
     CGPoint stavesPoint;
     
       // already added to stavesView
-    if ([self touchedNoteBelongsOnStaves]) {
+    if ([self touchedNoteWasAlreadyPlacedOnStaves]) {
       
       CGFloat buffer;
       if (kIsIPhone) {
@@ -233,7 +252,6 @@
       selfPoint = CGPointMake(self.touchedNote.center.x - buffer,
                               [self stavePositionForStaveIndex:self.tempStaveIndexForTouchedNote]);
       stavesPoint = [self getStavesViewLocationForSelfLocation:selfPoint];
-      
       
         // not yet added to stavesView
     } else {
@@ -266,7 +284,7 @@
   } else {
     
       // if note already belongs on staves, discard
-    if ([self touchedNoteBelongsOnStaves]) {
+    if ([self touchedNoteWasAlreadyPlacedOnStaves]) {
       [self discardNote:self.touchedNote];
       
         // else send it home to rack
@@ -294,8 +312,6 @@
     [self.touchedNote changeStemDirection];
   }
 }
-
-
 
 #pragma mark - touch methods
 
@@ -330,7 +346,15 @@
     NSLog(@"staveIndex is %i", self.tempStaveIndexForTouchedNote);
     
           // change stem direction if necessary
+    [self constrictStaveIndex];
     [self changeTouchedNoteStemDirectionIfNecessary];
+    
+      // if within staves, handle how to rearrange stuffOnStaves array
+    NSUInteger barForTouchedNote = [self BarForTouchedNote];
+    if (barForTouchedNote != NSUIntegerMax) {
+      NSLog(@"bar for touched note is %i", barForTouchedNote);
+      
+    }
   }
 }
 
@@ -342,12 +366,14 @@
     if (self.touchedNoteMoved) {
       
         // check whether to add to staves
+      [self constrictStaveIndex];
       [self decideWhetherToAddTouchedNoteToStaves];
       self.touchedNoteMoved = NO;
     }
     
     self.touchedNote = nil;
   }
+  NSLog(@"barlineXPositions %@", self.barlineXPositions);
 }
 
 #pragma mark - keySig methods
@@ -378,6 +404,9 @@
   }
   
   _keySigWidth = (self.keySigIndex < 6 ? self.keySigIndex : (self.keySigIndex % 6) + 1) * accidentalWidth;
+  
+    // only place to establish first barlineXPosition
+  [self setXPosition:(kStaveWidthMargin + self.clef.frame.size.width + _keySigWidth) forKey:0];
 }
 
 -(CGFloat)stavePositionForAccidentalIndex:(NSUInteger)accidentalIndex {
@@ -430,8 +459,22 @@
 
 #pragma mark - helper methods
 
--(BOOL)touchedNoteBelongsOnStaves {
+-(BOOL)touchedNoteWasAlreadyPlacedOnStaves {
   return (CGPointEqualToPoint(self.touchedNote.homePosition, CGPointMake(CGFLOAT_MAX, CGFLOAT_MAX)));
+}
+
+-(NSUInteger)BarForTouchedNote {
+  
+    // touched note is within staves yPosition
+  if (self.tempStaveIndexForTouchedNote > 3 && self.tempStaveIndexForTouchedNote < 21) {
+    CGFloat xPosition = self.touchedNote.center.x;
+    for (NSUInteger index = 0; index < 4; index++) {
+      if (xPosition > [self getXPositionForKey:index] && xPosition <= [self getXPositionForKey:index + 1]) {
+        return index;
+      }
+    }
+  }
+  return NSUIntegerMax;
 }
 
 -(CGFloat)stavePositionForStaveIndex:(NSUInteger)staveIndex {
@@ -442,7 +485,7 @@
 
   CGFloat yOrigin = 0;
   
-  if ([self touchedNoteBelongsOnStaves]) {
+  if ([self touchedNoteWasAlreadyPlacedOnStaves]) {
     yOrigin = 0;
   } else {
     yOrigin = _screenHeight / 3 - self.stavesView.frame.size.height / 2;
@@ -452,8 +495,7 @@
   NSInteger staveIndex = ((noteCenterRelativeToYOrigin + kStaveHeight * .25f) / (kStaveHeight / 2.f));
 
     // establish whether to show ledger line here
-  [self.touchedNote showLedgerLine:(staveIndex < 6 || staveIndex > 16)];
-  
+  [self.touchedNote modifyLedgersGivenStaveIndex:staveIndex];
   return staveIndex;
 }
 
@@ -461,7 +503,7 @@
   
   CGFloat xPosition;
   
-  if (kIsIPhone && [self touchedNoteBelongsOnStaves]) {
+  if (kIsIPhone && [self touchedNoteWasAlreadyPlacedOnStaves]) {
     UIScrollView *scrollView = (UIScrollView *)self.containerView;
     xPosition = selfLocation.x + scrollView.contentOffset.x;
   } else {
@@ -469,6 +511,21 @@
   }
 
   return CGPointMake(xPosition, selfLocation.y);
+}
+
+-(void)setXPosition:(CGFloat)xPosition forKey:(NSUInteger)key {
+  if (key <= 4) {
+    [self.barlineXPositions removeObjectForKey:@(key)];
+    [self.barlineXPositions setObject:@(xPosition) forKey:@(key)];
+  }
+}
+
+-(CGFloat)getXPositionForKey:(NSUInteger)key {
+  if (key <= 4) {
+    return [[self.barlineXPositions objectForKey:@(key)] floatValue];
+  } else {
+    return CGFLOAT_MAX;
+  }
 }
 
 #pragma mark - mail methods

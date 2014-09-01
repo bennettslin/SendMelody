@@ -13,7 +13,8 @@
 @interface SymbolView ()
 
 @property (strong, nonatomic) TouchSubview *touchSubview;
-@property (strong, nonatomic) SymbolView *ledgerLine;
+@property (strong, nonatomic) SymbolView *ledgerLine1;
+@property (strong, nonatomic) SymbolView *ledgerLine2;
 
 @end
 
@@ -31,7 +32,7 @@
     if ([self determineIfTouchableWithSymbol:symbol]) {
       self.userInteractionEnabled = YES;
       [self modifyGivenSymbol:symbol]; // must be between these two
-      [self instantiateLedgerLine];
+      [self instantiateLedgerLines];
       [self instantiateTouchSubview];
     } else {
       [self modifyGivenSymbol:symbol];
@@ -67,6 +68,65 @@
   }
 }
 
+-(void)modifyLedgersGivenStaveIndex:(NSUInteger)staveIndex {
+  
+  if (staveIndex <= 6) {
+  
+    switch (staveIndex) {
+      case 6: // high A
+        self.ledgerLine1.hidden = NO;
+        self.ledgerLine1.center = CGPointMake(self.frame.size.width / 2,
+                                              (self.frame.size.height / 2) - kStaveHeight / 2);
+        self.ledgerLine2.hidden = YES;
+        break;
+      case 5:
+        self.ledgerLine1.hidden = NO;
+        self.ledgerLine1.center = CGPointMake(self.frame.size.width / 2,
+                                              self.frame.size.height / 2);
+        self.ledgerLine2.hidden = YES;
+        break;
+      case 4:
+      default:
+        self.ledgerLine1.hidden = NO;
+        self.ledgerLine1.center = CGPointMake(self.frame.size.width / 2,
+                                              (self.frame.size.height / 2) - kStaveHeight / 2);
+        self.ledgerLine2.hidden = NO;
+        self.ledgerLine2.center = CGPointMake(self.frame.size.width / 2,
+                                              (self.frame.size.height / 2) + kStaveHeight / 2);
+        break;
+    }
+    
+  } else if (staveIndex >= 18 && staveIndex <= 22) {
+    
+      switch (staveIndex) {
+      case 18: // low C
+        self.ledgerLine1.hidden = NO;
+        self.ledgerLine1.center = CGPointMake(self.frame.size.width / 2,
+                                              (self.frame.size.height / 2) - kStaveHeight / 2);
+        self.ledgerLine2.hidden = YES;
+        break;
+      case 19:
+        self.ledgerLine1.hidden = NO;
+        self.ledgerLine1.center = CGPointMake(self.frame.size.width / 2,
+                                              (self.frame.size.height / 2) - kStaveHeight);
+        self.ledgerLine2.hidden = YES;
+        break;
+      case 20:
+      default:
+        self.ledgerLine1.hidden = NO;
+        self.ledgerLine1.center = CGPointMake(self.frame.size.width / 2,
+                                              (self.frame.size.height / 2) - kStaveHeight / 2);
+        self.ledgerLine2.hidden = NO;
+        self.ledgerLine2.center = CGPointMake(self.frame.size.width / 2,
+                                              (self.frame.size.height / 2) - kStaveHeight * 3 / 2);
+        break;
+    }
+  } else {
+    self.ledgerLine1.hidden = YES;
+    self.ledgerLine2.hidden = YES;
+  }
+}
+
 -(void)changeStemDirection {
   switch (self.mySymbol) {
     case kQuarterNoteStemUp:
@@ -91,13 +151,15 @@
 
 -(void)beginTouch {
   self.font = [UIFont fontWithName:kFontSonata size:kSymbolFontSize * kTouchScaleFactor];
-  self.ledgerLine.font = [UIFont fontWithName:kFontSonata size:kSymbolFontSize * kTouchScaleFactor];
+  self.ledgerLine1.font = [UIFont fontWithName:kFontSonata size:kSymbolFontSize * kTouchScaleFactor];
+  self.ledgerLine2.font = [UIFont fontWithName:kFontSonata size:kSymbolFontSize * kTouchScaleFactor];
   [self repositionTouchSubview];
 }
 
 -(void)endTouch {
   self.font = [UIFont fontWithName:kFontSonata size:kSymbolFontSize];
-  self.ledgerLine.font = [UIFont fontWithName:kFontSonata size:kSymbolFontSize];
+  self.ledgerLine1.font = [UIFont fontWithName:kFontSonata size:kSymbolFontSize];
+  self.ledgerLine2.font = [UIFont fontWithName:kFontSonata size:kSymbolFontSize];
   [self repositionTouchSubview];
 }
 
@@ -120,21 +182,22 @@
   [self repositionTouchSubview];
 }
 
-#pragma mark - custom getters and setters
-
 #pragma mark - helper methods
 
--(void)instantiateLedgerLine {
-  self.ledgerLine = [[SymbolView alloc] initWithSymbol:kLedgerLine];
-  self.ledgerLine.center = CGPointMake(self.frame.size.width / 2, self.frame.size.height / 2);
-  self.ledgerLine.hidden = YES;
+-(void)instantiateLedgerLines {
+  self.ledgerLine1 = [[SymbolView alloc] initWithSymbol:kLedgerLine];
+  self.ledgerLine1.center = CGPointMake(self.frame.size.width / 2, self.frame.size.height / 2);
+  self.ledgerLine1.hidden = YES;
   
-  [self addSubview:self.ledgerLine];
-  [self.ledgerLine modifyGivenSymbol:kLedgerLine];
-}
+  [self addSubview:self.ledgerLine1];
+  [self.ledgerLine1 modifyGivenSymbol:kLedgerLine];
 
--(void)showLedgerLine:(BOOL)show {
-  self.ledgerLine.hidden = !show;
+  self.ledgerLine2 = [[SymbolView alloc] initWithSymbol:kLedgerLine];
+  self.ledgerLine2.center = CGPointMake(self.frame.size.width / 2, self.frame.size.height / 2);
+  self.ledgerLine2.hidden = YES;
+  
+  [self addSubview:self.ledgerLine2];
+  [self.ledgerLine2 modifyGivenSymbol:kLedgerLine];
 }
 
 -(void)instantiateTouchSubview {

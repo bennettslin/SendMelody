@@ -17,7 +17,9 @@
 -(id)initWithFrame:(CGRect)frame {
   self = [super initWithFrame:frame];
   if (self) {
-    self.backgroundColor = [UIColor whiteColor];
+    self.backgroundColor = kBackgroundYellow;
+    self.layer.cornerRadius = kStaveHeight;
+    self.layer.masksToBounds = YES;
   }
   return self;
 }

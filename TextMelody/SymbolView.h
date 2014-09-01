@@ -24,6 +24,6 @@
 -(void)changeStemDirection;
 -(void)sendHomeToRack;
 
--(void)showLedgerLine:(BOOL)show;
+-(void)modifyLedgersGivenStaveIndex:(NSUInteger)staveIndex;
 
 @end
