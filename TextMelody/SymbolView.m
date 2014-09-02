@@ -18,7 +18,10 @@
 
 @end
 
-@implementation SymbolView
+@implementation SymbolView {
+  BOOL _touched;
+  UIView *_centerDot;
+}
 
 -(instancetype)initWithSymbol:(MusicSymbol)symbol {
   self = [super init];
@@ -39,10 +42,10 @@
     }
     
       // testing purposes
-    UIView *centerDot = [[UIView alloc] initWithFrame:CGRectMake(0, 0, 1.5, 1.5)];
-    centerDot.backgroundColor = [UIColor redColor];
-    centerDot.center = self.center;
-    [self addSubview:centerDot];
+    _centerDot = [[UIView alloc] initWithFrame:CGRectMake(0, 0, 1.5, 1.5)];
+    _centerDot.backgroundColor = [UIColor redColor];
+    _centerDot.center = CGPointMake(self.frame.size.width / 2, self.frame.size.height / 2);
+    [self addSubview:_centerDot];
     
     self.layer.borderColor = [UIColor redColor].CGColor;
     self.layer.borderWidth = 0.5f;
@@ -70,13 +73,15 @@
 
 -(void)modifyLedgersGivenStaveIndex:(NSUInteger)staveIndex {
   
+  CGFloat factor = _touched ? kTouchScaleFactor : 1.f;
+  
   if (staveIndex <= 6) {
   
     switch (staveIndex) {
       case 6: // high A
         self.ledgerLine1.hidden = NO;
         self.ledgerLine1.center = CGPointMake(self.frame.size.width / 2,
-                                              (self.frame.size.height / 2) - kStaveHeight / 2);
+                                              (self.frame.size.height / 2) - kStaveHeight * factor / 2);
         self.ledgerLine2.hidden = YES;
         break;
       case 5:
@@ -89,10 +94,10 @@
       default:
         self.ledgerLine1.hidden = NO;
         self.ledgerLine1.center = CGPointMake(self.frame.size.width / 2,
-                                              (self.frame.size.height / 2) - kStaveHeight / 2);
+                                              (self.frame.size.height / 2) - kStaveHeight * factor / 2);
         self.ledgerLine2.hidden = NO;
         self.ledgerLine2.center = CGPointMake(self.frame.size.width / 2,
-                                              (self.frame.size.height / 2) + kStaveHeight / 2);
+                                              (self.frame.size.height / 2) + kStaveHeight * factor / 2);
         break;
     }
     
@@ -102,23 +107,23 @@
       case 18: // low C
         self.ledgerLine1.hidden = NO;
         self.ledgerLine1.center = CGPointMake(self.frame.size.width / 2,
-                                              (self.frame.size.height / 2) - kStaveHeight / 2);
+                                              (self.frame.size.height / 2) - kStaveHeight * factor / 2);
         self.ledgerLine2.hidden = YES;
         break;
       case 19:
         self.ledgerLine1.hidden = NO;
         self.ledgerLine1.center = CGPointMake(self.frame.size.width / 2,
-                                              (self.frame.size.height / 2) - kStaveHeight);
+                                              (self.frame.size.height / 2) - kStaveHeight * factor );
         self.ledgerLine2.hidden = YES;
         break;
       case 20:
       default:
         self.ledgerLine1.hidden = NO;
         self.ledgerLine1.center = CGPointMake(self.frame.size.width / 2,
-                                              (self.frame.size.height / 2) - kStaveHeight / 2);
+                                              (self.frame.size.height / 2) - kStaveHeight * factor / 2);
         self.ledgerLine2.hidden = NO;
         self.ledgerLine2.center = CGPointMake(self.frame.size.width / 2,
-                                              (self.frame.size.height / 2) - kStaveHeight * 3 / 2);
+                                              (self.frame.size.height / 2) - kStaveHeight * factor * 3 / 2);
         break;
     }
   } else {
@@ -150,16 +155,26 @@
 }
 
 -(void)beginTouch {
+  _touched = YES;
+  
   self.font = [UIFont fontWithName:kFontSonata size:kSymbolFontSize * kTouchScaleFactor];
   self.ledgerLine1.font = [UIFont fontWithName:kFontSonata size:kSymbolFontSize * kTouchScaleFactor];
   self.ledgerLine2.font = [UIFont fontWithName:kFontSonata size:kSymbolFontSize * kTouchScaleFactor];
+  _centerDot.center = CGPointMake(self.frame.size.width / 2, self.frame.size.height / 2);
+  
+  [self modifyGivenSymbol:self.mySymbol];
   [self repositionTouchSubview];
 }
 
 -(void)endTouch {
+  _touched = NO;
+  
   self.font = [UIFont fontWithName:kFontSonata size:kSymbolFontSize];
   self.ledgerLine1.font = [UIFont fontWithName:kFontSonata size:kSymbolFontSize];
   self.ledgerLine2.font = [UIFont fontWithName:kFontSonata size:kSymbolFontSize];
+  _centerDot.center = CGPointMake(self.frame.size.width / 2, self.frame.size.height / 2);
+  
+  [self modifyGivenSymbol:self.mySymbol];
   [self repositionTouchSubview];
 }
 
@@ -219,10 +234,13 @@
 }
 
 -(NSAttributedString *)verticallyAlignString:(NSString *)string {
-
+  
+  CGFloat factor = _touched ? kTouchScaleFactor : 1.f;
+  CGFloat buffer = _touched ? kStaveYAdjust : kStaveYAdjust;
+  
   NSMutableAttributedString *attString = [[NSMutableAttributedString alloc] initWithString:string];
   [attString addAttribute:NSBaselineOffsetAttributeName
-                    value:@(kStaveHeight/2 + kStaveYAdjust)
+                    value:@((kStaveHeight * factor / 2) + buffer * factor)
                     range:NSMakeRange(0, string.length)];
   
   return attString;
