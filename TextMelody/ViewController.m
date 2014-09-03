@@ -13,7 +13,14 @@
 #import "StavesView.h"
 #import "SymbolView.h"
 
-@interface ViewController () <UIScrollViewDelegate, ContainerDelegate, MFMailComposeViewControllerDelegate, MFMessageComposeViewControllerDelegate>
+typedef enum noteMultiplier {
+  kWholeNoteMultiplier = 16,
+  kHalfNoteMultiplier = 12,
+  kQuarterNoteMultiplier = 8,
+  kBarlineMultiplier = 1
+} NoteMultiplier;
+
+@interface ViewController () <UIScrollViewDelegate, ContainerDelegate, MFMailComposeViewControllerDelegate, MFMessageComposeViewControllerDelegate, UIActionSheetDelegate>
 
 @property (strong, nonatomic) StavesView *stavesView;
 @property (strong, nonatomic) SymbolView *clef;
@@ -24,16 +31,20 @@
   // pointers
 @property (strong, nonatomic) UIView *containerView;
 @property (strong, nonatomic) SymbolView *touchedNote;
-@property (strong, nonatomic) NSMutableArray *StuffOnStaves;
+@property (strong, nonatomic) NSMutableArray *stuffOnStaves;
 
 @property (nonatomic) CGVector touchOffset;
-@property (nonatomic) NSInteger tempStaveIndexForTouchedNote;
 @property (nonatomic) BOOL touchedNoteMoved;
 
 @property (strong, nonatomic) UIButton *mailButton;
 @property (strong, nonatomic) UIButton *textButton;
 
+@property (strong, nonatomic) UIButton *testButton;
+@property (strong, nonatomic) UIButton *soundButton;
+@property (strong, nonatomic) UIButton *startOverButton;
+
 @property (strong, nonatomic) NSMutableDictionary *barlineXPositions;
+@property (strong, nonatomic) id temporaryObject;
 
 @end
 
@@ -60,6 +71,7 @@
   [self instantiateNewNoteWithSymbol:kWholeNote];
 
   [self instantiateMessageButtons];
+  [self instantiateOtherButtons];
 }
 
 -(void)viewWillAppear:(BOOL)animated {
@@ -116,7 +128,7 @@
   self.endBarline.center = CGPointMake(kStaveWidth - kStaveWidthMargin - self.endBarline.frame.size.width / 2, kStaveHeight * 7.5 + kStaveYAdjust);
   
     // only place to establish last barlineXPosition
-  [self setXPosition:self.endBarline.center.x forKey:4];
+  [self setXPosition:self.endBarline.center.x forBarline:4];
   [self.stavesView addSubview:self.endBarline];
 }
 
@@ -139,53 +151,251 @@
   [self.view addSubview:self.textButton];
 }
 
+-(void)instantiateOtherButtons {
+  self.testButton = [[UIButton alloc] initWithFrame:CGRectMake(0, _screenHeight - kButtonLength * 3, kButtonLength, kButtonLength)];
+  self.testButton.backgroundColor = [UIColor redColor];
+  [self.testButton setTitle:@"test" forState:UIControlStateNormal];
+  [self.testButton addTarget:self
+                      action:@selector(testButtonTapped)
+            forControlEvents:UIControlEventTouchUpInside];
+  [self.view addSubview:self.testButton];
+  
+  self.soundButton = [[UIButton alloc] initWithFrame:CGRectMake(0, _screenHeight - kButtonLength * 2, kButtonLength, kButtonLength)];
+  self.soundButton.backgroundColor = [UIColor purpleColor];
+  [self.soundButton setTitle:@"sound" forState:UIControlStateNormal];
+  [self.soundButton addTarget:self
+                      action:@selector(soundButtonTapped)
+            forControlEvents:UIControlEventTouchUpInside];
+  [self.view addSubview:self.soundButton];
+  
+  self.startOverButton = [[UIButton alloc] initWithFrame:CGRectMake(0, _screenHeight - kButtonLength, kButtonLength, kButtonLength)];
+  self.startOverButton.backgroundColor = [UIColor orangeColor];
+  [self.startOverButton setTitle:@"new" forState:UIControlStateNormal];
+  [self.startOverButton addTarget:self
+                       action:@selector(startOverButtonTapped)
+             forControlEvents:UIControlEventTouchUpInside];
+  [self.view addSubview:self.startOverButton];
+}
+
 -(void)instantiateStuffOnStaves {
 
-  self.StuffOnStaves = [NSMutableArray new];
+  self.stuffOnStaves = [NSMutableArray new];
   
-  for (int i = 0; i < 4; i++) {
-    SymbolView *wholeRest = [[SymbolView alloc] initWithSymbol:kWholeNoteRest];
-    wholeRest.center = CGPointMake(0, kStaveHeight * 5);
-    [self.StuffOnStaves addObject:wholeRest];
+  for (int h = 0; h < 4; h++) {
     
-    if (i < 3) {
+//    SymbolView *wholeRest = [[SymbolView alloc] initWithSymbol:kWholeNoteRest];
+//    [wholeRest centerThisSymbol];
+//    [self.stuffOnStaves addObject:wholeRest];
+    
+    switch (h) {
+      case 0: {
+        SymbolView *wholeNote = [[SymbolView alloc] initWithSymbol:kWholeNote];
+        wholeNote.staveIndex = 12;
+        [self centerNote:wholeNote];
+        [self.stuffOnStaves addObject:wholeNote];
+        break;
+      }
+        
+      case 1: {
+        NSMutableArray *arrayOfTwoHalves = [NSMutableArray new];
+        for (int i = 0; i < 2; i++) {
+          SymbolView *halfNote = [[SymbolView alloc] initWithSymbol:kHalfNoteStemUp];
+          halfNote.staveIndex = 10 + i;
+          [self centerNote:halfNote];
+          [halfNote changeStemDirectionIfNecessary];
+          [arrayOfTwoHalves addObject:halfNote];
+        }
+        [self.stuffOnStaves addObject:arrayOfTwoHalves];
+        break;
+      }
+        
+      case 2: {
+        
+        NSMutableArray *arrayOfTwoHalves = [NSMutableArray new];
+        for (int i = 0; i < 2; i++) {
+          NSMutableArray *arrayOfTwoQuarters = [NSMutableArray new];
+          for (int j = 0; j < 2; j++) {
+            SymbolView *quarterNote = [[SymbolView alloc] initWithSymbol:kQuarterNoteStemUp];
+            quarterNote.staveIndex = 13 + j;
+            [self centerNote:quarterNote];
+            [quarterNote changeStemDirectionIfNecessary];
+            [arrayOfTwoQuarters addObject:quarterNote];
+          }
+          [arrayOfTwoHalves addObject:arrayOfTwoQuarters];
+        }
+        [self.stuffOnStaves addObject:arrayOfTwoHalves];
+        break;
+      }
+        
+      case 3: {
+
+        NSMutableArray *arrayOfTwoHalves = [NSMutableArray new];
+        for (int i = 0; i < 2; i++) {
+          
+          switch (i) {
+            case 0: {
+              SymbolView *halfNote = [[SymbolView alloc] initWithSymbol:kHalfNoteStemUp];
+              halfNote.staveIndex = 14 + i;
+              [self centerNote:halfNote];
+              [halfNote changeStemDirectionIfNecessary];
+              [arrayOfTwoHalves addObject:halfNote];
+              break;
+            }
+              
+            case 1: {
+              NSMutableArray *arrayOfTwoQuarters = [NSMutableArray new];
+              for (int j = 0; j < 2; j++) {
+                SymbolView *quarterNote = [[SymbolView alloc] initWithSymbol:kQuarterNoteStemUp];
+                quarterNote.staveIndex = 13 + j;
+                [self centerNote:quarterNote];
+                [quarterNote changeStemDirectionIfNecessary];
+                [arrayOfTwoQuarters addObject:quarterNote];
+              }
+              
+              [arrayOfTwoHalves addObject:arrayOfTwoQuarters];
+              break;
+            }
+            default:
+              break;
+          }
+        }
+        [self.stuffOnStaves addObject:arrayOfTwoHalves];
+        break;
+      }
+ 
+      default:
+        break;
+    }
+    
+    if (h < 3) {
       SymbolView *barline = [[SymbolView alloc] initWithSymbol:kBarline];
       barline.center = CGPointMake(0, kStaveHeight * 7.5);
-      [self.StuffOnStaves addObject:barline];
+      [self.stuffOnStaves addObject:barline];
     }
   }
+  NSLog(@"stuff on staves is %@", self.stuffOnStaves);
 }
 
 -(void)repositionStuffOnStaves {
   
-  NSUInteger unhiddenCount = [self countOfUnhiddenStuffOnStaves];
+    // establish very left edge
+  CGFloat leftEdge = [self getXPositionForBarline:0];
   
-  CGFloat leftBuffer = [self getXPositionForKey:0];
-  CGFloat range = kStaveWidth - leftBuffer - self.endBarline.frame.size.width / 2 - kStaveWidthMargin; // only half of endBarline width is wider than it seems
+    // establish range, keeping in mind that we're only using half of endBarline width,
+    // since it's actually wider than it seems
+  CGFloat range = kStaveWidth - leftEdge - self.endBarline.frame.size.width / 2 - kStaveWidthMargin;
   
-  CGFloat rangeSlot = range / (unhiddenCount + 1);
-  NSUInteger currentBarline = 1;
-  
-  NSUInteger unhiddenCounter = 0;
-  for (int i = 0; i < self.StuffOnStaves.count; i++) {
+    // now get total value of elements: 16 for whole elements, 12 for half, and 9 for quarter
+  NSUInteger sumValue = 0;
+  for (int counter = 0; counter < self.stuffOnStaves.count; counter++) {
     
-    SymbolView *symbol = self.StuffOnStaves[i];
-    if (!symbol.hidden) {
+    id currentObject = self.stuffOnStaves[counter];
+    
+      // whole note or rest
+    if ([currentObject isKindOfClass:SymbolView.class]) {
+      SymbolView *symbol = (SymbolView *)currentObject;
+      
+        // whole note or rest
+      if (symbol.mySymbol == kWholeNote || symbol.mySymbol == kWholeNoteRest) {
+        sumValue += kWholeNoteMultiplier;
+        
+          // barline
+      } else if (symbol.mySymbol == kBarline) {
+        sumValue += kBarlineMultiplier;
+      }
+      
+        // array of two halves
+    } else if ([currentObject isKindOfClass:NSArray.class]) {
+      NSArray *twoHalvesArray = (NSArray *)currentObject;
+      
+      for (int i = 0; i < 2; i++) {
+        
+          // this half is a half note or rest
+        if ([twoHalvesArray[i] isKindOfClass:SymbolView.class]) {
+          sumValue += kHalfNoteMultiplier;
+          
+            // this half is an array of two quarters
+        } else {
+          sumValue += kQuarterNoteMultiplier + kQuarterNoteMultiplier;
+        }
+      }
+    }
+    
+  }
   
-      symbol.center = CGPointMake(leftBuffer + (unhiddenCounter + 1) * rangeSlot, symbol.center.y);
+  CGFloat widthUnit = range / sumValue;
+
+    // widthUnit is multiplied by the noteDuration's inherent value
+    // so whole notes are 16 width units, half notes are 12 width units, and quarter notes 9 width units
+  
+  for (int i = 0; i < self.stuffOnStaves.count; i++) {
+    
+      // whole note or rest
+    id currentObject = self.stuffOnStaves[i];
+    if ([currentObject isKindOfClass:SymbolView.class]) {
       
-      if (!symbol.superview) {
-        [self.stavesView addSubview:symbol];
+      SymbolView *symbol = (SymbolView *)currentObject;
+      leftEdge = [self xCenterNote:symbol fromLeftEdge:leftEdge withWidthUnit:widthUnit];
+      
+        // array of two halves
+    } else if ([currentObject isKindOfClass:NSArray.class]) {
+      NSArray *twoHalvesArray = (NSArray *)currentObject;
+      
+      for (int j = 0; j < 2; j++) {
+        
+          // this half is a half note or rest
+        id currentHalfObject = twoHalvesArray[j];
+        if ([currentHalfObject isKindOfClass:SymbolView.class]) {
+          
+          SymbolView *symbol = (SymbolView *)currentHalfObject;
+          leftEdge = [self xCenterNote:symbol fromLeftEdge:leftEdge withWidthUnit:widthUnit];
+          
+            // this half is an array of two quarters
+        } else if ([currentHalfObject isKindOfClass:NSArray.class]) {
+          NSArray *twoQuartersArray = (NSArray *)currentHalfObject;
+          
+          for (int k = 0; k < 2; k++) {
+            
+            id currentQuarterObject = twoQuartersArray[k];
+            if ([currentQuarterObject isKindOfClass:SymbolView.class]) {
+
+              SymbolView *symbol = (SymbolView *)currentQuarterObject;
+              leftEdge = [self xCenterNote:symbol fromLeftEdge:leftEdge withWidthUnit:widthUnit];
+              
+            }
+          }
+        }
       }
-      
-      if (symbol.mySymbol == kBarline) {
-        [self setXPosition:symbol.center.x forKey:currentBarline];
-        currentBarline++;
-      }
-      
-      unhiddenCounter++;
     }
   }
+}
+
+-(CGFloat)xCenterNote:(SymbolView *)note fromLeftEdge:(CGFloat)leftEdge withWidthUnit:(CGFloat)widthUnit {
+  
+  NSUInteger multiplier;
+  switch (note.noteDuration) {
+    case 4: // whole note or rest
+      multiplier = kWholeNoteMultiplier;
+      break;
+    case 2: // half note or rest
+      multiplier = kHalfNoteMultiplier;
+      break;
+    case 1: // quarter note or rest
+      multiplier = kQuarterNoteMultiplier;
+      break;
+    default: // barline
+      multiplier = kBarlineMultiplier;
+      break;
+  }
+  
+  CGFloat noteXRange = widthUnit * multiplier;
+  note.center = CGPointMake(leftEdge + noteXRange / 2, note.center.y);
+
+  if (!note.superview) {
+    [self.stavesView addSubview:note];
+  }
+
+  return leftEdge + noteXRange;
 }
 
 #pragma mark - touch methods
@@ -217,12 +427,13 @@
     CGPoint noteCenter = [self adjustForTouchOffsetLocationPoint:touchPoint];
     CGPoint realCenter = [self getStavesViewLocationForSelfLocation:noteCenter];
     self.touchedNote.center = realCenter;
-    self.tempStaveIndexForTouchedNote = [self staveIndexForNoteCenter:realCenter];
-    NSLog(@"staveIndex is %i", self.tempStaveIndexForTouchedNote);
+    self.touchedNote.staveIndex = [self staveIndexForNoteCenter:realCenter];
+    NSLog(@"staveIndex is %i", self.touchedNote.staveIndex);
     
           // change stem direction if necessary
     [self constrictStaveIndex];
-    [self changeTouchedNoteStemDirectionIfNecessary];
+    [self.touchedNote modifyLedgersGivenStaveIndex];
+    [self.touchedNote changeStemDirectionIfNecessary];
     
     /*
     
@@ -285,7 +496,7 @@
       
         // check whether to add to staves
       [self constrictStaveIndex];
-      [self.touchedNote modifyLedgersGivenStaveIndex:self.tempStaveIndexForTouchedNote];
+      [self.touchedNote modifyLedgersGivenStaveIndex];
       
       [self decideWhetherToAddTouchedNoteToStaves];
       self.touchedNoteMoved = NO;
@@ -300,51 +511,59 @@
   // FIXME: a lot of these will be changed
 #pragma mark - note to staves helper methods -----------------------------------
 
--(NSUInteger)countOfUnhiddenStuffOnStaves {
-  NSUInteger count = 0;
-  for (SymbolView *symbol in self.StuffOnStaves) {
-    if (symbol.hidden == NO) {
-      count++;
-    }
-  }
-  return count;
-}
+//-(NSUInteger)countOfUnhiddenStuffOnStaves {
+//  NSUInteger count = 0;
+//  for (SymbolView *symbol in self.StuffOnStaves) {
+//    if (symbol.hidden == NO) {
+//      count++;
+//    }
+//  }
+//  return count;
+//}
 
 -(NSUInteger)barForTouchedNote {
     // touched note is within staves yPosition
-  if (self.tempStaveIndexForTouchedNote > 3 && self.tempStaveIndexForTouchedNote < 21) {
-    CGFloat xPosition = self.touchedNote.center.x;
+  if (self.touchedNote.staveIndex > 3 && self.touchedNote.staveIndex < 21) {
+    
+    CGFloat xPosition;
+    if (kIsIPhone && ![self noteWasAlreadyPlacedOnStaves:self.touchedNote]) {
+      UIScrollView *scrollView = (UIScrollView *)self.containerView;
+      xPosition = self.touchedNote.center.x + scrollView.contentOffset.x;
+    } else {
+      xPosition = self.touchedNote.center.x;
+    }
+
     for (NSUInteger index = 0; index < 4; index++) {
-      if (xPosition > [self getXPositionForKey:index] && xPosition <= [self getXPositionForKey:index + 1]) {
+      if (xPosition > [self getXPositionForBarline:index] && xPosition <= [self getXPositionForBarline:index + 1]) {
         return index;
       }
     }
   }
+  
   return NSUIntegerMax;
 }
 
 -(NSUInteger)sectionForTouchedNoteInBar:(NSUInteger)barNumber withElementCount:(NSUInteger)count {
   
-  CGFloat leftBarlineXPosition = [self getXPositionForKey:barNumber];
-  CGFloat rightBarlineXPosition = [self getXPositionForKey:barNumber + 1];
+  CGFloat leftBarlineXPosition = [self getXPositionForBarline:barNumber];
+  CGFloat rightBarlineXPosition = [self getXPositionForBarline:barNumber + 1];
   CGFloat barLength = rightBarlineXPosition - leftBarlineXPosition;
   CGFloat barSectionLength = barLength / count;
   
   CGFloat touchedNoteXPositionWithinBar = self.touchedNote.center.x - leftBarlineXPosition;
   
   NSUInteger section = (NSUInteger)(touchedNoteXPositionWithinBar / barSectionLength);
-  NSLog(@"note is in section %i", section);
   return section;
 }
 
--(void)setXPosition:(CGFloat)xPosition forKey:(NSUInteger)key {
+-(void)setXPosition:(CGFloat)xPosition forBarline:(NSUInteger)key {
   if (key <= 4) {
     [self.barlineXPositions removeObjectForKey:@(key)];
     [self.barlineXPositions setObject:@(xPosition) forKey:@(key)];
   }
 }
 
--(CGFloat)getXPositionForKey:(NSUInteger)key {
+-(CGFloat)getXPositionForBarline:(NSUInteger)key {
   if (key <= 4) {
     return [[self.barlineXPositions objectForKey:@(key)] floatValue];
   } else {
@@ -357,8 +576,8 @@
   NSMutableArray *tempElementsInBar = [NSMutableArray new];
   
   NSUInteger currentBarline = 0;
-  for (int i = 0; i < self.StuffOnStaves.count; i++) {
-    SymbolView *symbol = self.StuffOnStaves[i];
+  for (int i = 0; i < self.stuffOnStaves.count; i++) {
+    SymbolView *symbol = self.stuffOnStaves[i];
     
     if (symbol.mySymbol == kBarline) {
       currentBarline++;
@@ -371,13 +590,18 @@
     }
   }
   
-  NSLog(@"element count %i in bar %i", tempElementsInBar.count, barNumber);
   return [NSArray arrayWithArray:tempElementsInBar];
 }
 
--(void)hideOrShowElements:(NSArray *)elements hide:(BOOL)hide {
-  for (SymbolView *symbol in elements) {
+-(void)toggleObject:(id)object hidden:(BOOL)hide {
+  if ([object isKindOfClass:SymbolView.class]) {
+    SymbolView *symbol = (SymbolView *)object;
     symbol.hidden = hide;
+  } else if ([object isKindOfClass:NSArray.class]) {
+    NSArray *array = (NSArray *)object;
+    for (id object in array) {
+      [self toggleObject:object hidden:hide];
+    }
   }
 }
 
@@ -411,7 +635,7 @@
   _keySigWidth = (self.keySigIndex < 6 ? self.keySigIndex : (self.keySigIndex % 6) + 1) * accidentalWidth;
   
     // only place to establish first barlineXPosition
-  [self setXPosition:(kStaveWidthMargin + self.clef.frame.size.width + _keySigWidth) forKey:0];
+  [self setXPosition:(kStaveWidthMargin + self.clef.frame.size.width + _keySigWidth) forBarline:0];
 }
 
 -(CGFloat)stavePositionForAccidentalIndex:(NSUInteger)accidentalIndex {
@@ -506,10 +730,10 @@
 
 -(void)constrictStaveIndex {
     // if 0 to 3, it's 4; if 21 to 24, it's 20
-  if (self.tempStaveIndexForTouchedNote >= 0 && self.tempStaveIndexForTouchedNote < 4) {
-    self.tempStaveIndexForTouchedNote = 4;
-  } else if (self.tempStaveIndexForTouchedNote <= 24 && self.tempStaveIndexForTouchedNote > 20) {
-    self.tempStaveIndexForTouchedNote = 20;
+  if (self.touchedNote.staveIndex >= 0 && self.touchedNote.staveIndex < 4) {
+    self.touchedNote.staveIndex = 4;
+  } else if (self.touchedNote.staveIndex <= 24 && self.touchedNote.staveIndex > 20) {
+    self.touchedNote.staveIndex = 20;
   }
 }
 
@@ -518,45 +742,18 @@
     // note is within staves
   if ([self barForTouchedNote] != NSUIntegerMax) {
     
-    CGPoint selfPoint;
-    CGPoint stavesPoint;
+    [self centerNote:self.touchedNote];
     
-      // already added to stavesView
-    if ([self touchedNoteWasAlreadyPlacedOnStaves]) {
-      
-      CGFloat buffer = 0;
-      if (kIsIPhone) {
-        ContainerScrollView *containerScrollView = (ContainerScrollView *)self.containerView;
-        buffer = containerScrollView.contentOffset.x;
-      }
-      
-      selfPoint = CGPointMake(self.touchedNote.center.x - buffer,
-                              [self stavePositionForStaveIndex:self.tempStaveIndexForTouchedNote]);
-      stavesPoint = [self getStavesViewLocationForSelfLocation:selfPoint];
-      
-        // not yet added to stavesView
-    } else {
-      
-      CGFloat buffer = 0;
-      if (kIsIPhone) {
-        ContainerScrollView *containerScrollView = (ContainerScrollView *)self.containerView;
-        buffer = containerScrollView.contentOffset.x;
-      }
-      
-      selfPoint = CGPointMake(self.touchedNote.center.x + buffer,
-                              [self stavePositionForStaveIndex:self.tempStaveIndexForTouchedNote]);
-      stavesPoint = [self getStavesViewLocationForSelfLocation:selfPoint];
-      
+    if (![self noteWasAlreadyPlacedOnStaves:self.touchedNote]) {
       self.touchedNote.homePosition = CGPointMake(CGFLOAT_MAX, CGFLOAT_MAX);
       
         // add touched note to array
-      [self.StuffOnStaves addObject:self.touchedNote];
+      [self.stuffOnStaves addObject:self.touchedNote];
       
         // generate new note for self.view
       [self instantiateNewNoteWithSymbol:self.touchedNote.mySymbol];
     }
     
-    self.touchedNote.center = stavesPoint;
     [self.stavesView addSubview:self.touchedNote];
     
     return YES;
@@ -565,13 +762,14 @@
   } else {
     
       // if note already belongs on staves, discard
-    if ([self touchedNoteWasAlreadyPlacedOnStaves]) {
+    if ([self noteWasAlreadyPlacedOnStaves:self.touchedNote]) {
       [self discardNote:self.touchedNote];
       
         // else send it home to rack
     } else {
       [self.touchedNote sendHomeToRack];
     }
+    
     return NO;
   }
 }
@@ -583,21 +781,10 @@
                      self.touchOffset.dy + touchLocation.y);
 }
 
--(void)changeTouchedNoteStemDirectionIfNecessary {
-  
-  if ((self.tempStaveIndexForTouchedNote < 13 &&
-       (self.touchedNote.mySymbol == kQuarterNoteStemUp || self.touchedNote.mySymbol == kHalfNoteStemUp)) ||
-      (self.tempStaveIndexForTouchedNote >= 13 &&
-       (self.touchedNote.mySymbol == kQuarterNoteStemDown || self.touchedNote.mySymbol == kHalfNoteStemDown))) {
-        
-        [self.touchedNote changeStemDirection];
-      }
-}
-
 #pragma mark - touched note helper methods -------------------------------------
 
--(BOOL)touchedNoteWasAlreadyPlacedOnStaves {
-  return (CGPointEqualToPoint(self.touchedNote.homePosition, CGPointMake(CGFLOAT_MAX, CGFLOAT_MAX)));
+-(BOOL)noteWasAlreadyPlacedOnStaves:(SymbolView *)note {
+  return (CGPointEqualToPoint(note.homePosition, CGPointMake(CGFLOAT_MAX, CGFLOAT_MAX)));
 }
 
 -(CGFloat)stavePositionForStaveIndex:(NSUInteger)staveIndex {
@@ -608,7 +795,7 @@
 
   CGFloat yOrigin = 0;
   
-  if ([self touchedNoteWasAlreadyPlacedOnStaves]) {
+  if ([self noteWasAlreadyPlacedOnStaves:self.touchedNote]) {
     yOrigin = 0;
   } else {
     yOrigin = _screenHeight / 3 - self.stavesView.frame.size.height / 2;
@@ -617,8 +804,6 @@
   CGFloat noteCenterRelativeToYOrigin = noteCenter.y - yOrigin;
   NSInteger staveIndex = ((noteCenterRelativeToYOrigin + kStaveHeight * .25f) / (kStaveHeight / 2.f));
 
-    // establish whether to show ledger line here
-  [self.touchedNote modifyLedgersGivenStaveIndex:staveIndex];
   return staveIndex;
 }
 
@@ -626,7 +811,7 @@
   
   CGFloat xPosition;
   
-  if (kIsIPhone && [self touchedNoteWasAlreadyPlacedOnStaves]) {
+  if (kIsIPhone && [self noteWasAlreadyPlacedOnStaves:self.touchedNote]) {
     UIScrollView *scrollView = (UIScrollView *)self.containerView;
     xPosition = selfLocation.x + scrollView.contentOffset.x;
   } else {
@@ -634,6 +819,37 @@
   }
 
   return CGPointMake(xPosition, selfLocation.y);
+}
+
+-(void)centerNote:(SymbolView *)note {
+  CGPoint selfPoint;
+  
+    // already added to stavesView
+  if ([self noteWasAlreadyPlacedOnStaves:note]) {
+    
+    CGFloat buffer = 0;
+    if (kIsIPhone) {
+      ContainerScrollView *containerScrollView = (ContainerScrollView *)self.containerView;
+      buffer = containerScrollView.contentOffset.x;
+    }
+    
+    selfPoint = CGPointMake(note.center.x - buffer,
+                            [self stavePositionForStaveIndex:note.staveIndex]);
+    
+      // not yet added to stavesView
+  } else {
+    
+    CGFloat buffer = 0;
+    if (kIsIPhone) {
+      ContainerScrollView *containerScrollView = (ContainerScrollView *)self.containerView;
+      buffer = containerScrollView.contentOffset.x;
+    }
+    
+    selfPoint = CGPointMake(note.center.x + buffer,
+                            [self stavePositionForStaveIndex:note.staveIndex]);
+  }
+
+  note.center = [self getStavesViewLocationForSelfLocation:selfPoint];
 }
 
 #pragma mark - mail and text methods -------------------------------------------
@@ -654,7 +870,7 @@
     [self presentViewController:mailVC animated:YES completion:NULL];
     
   } else {
-    [self showCantSendMailAlert];
+    [self showCantSendAlertWithTitle:@"Error" message:@"This device is unable to send mail."];
   }
 }
 
@@ -663,27 +879,20 @@
   
   switch (result) {
     case MFMailComposeResultCancelled:
-    NSLog(@"Mail cancelled");
     break;
     case MFMailComposeResultSaved:
-    NSLog(@"Mail saved");
     break;
     case MFMailComposeResultSent:
-    NSLog(@"Mail sent");
     break;
-    case MFMailComposeResultFailed:
-    NSLog(@"Mail sent failure: %@", [error localizedDescription]);
+    case MFMailComposeResultFailed: {
+    [self showCantSendAlertWithTitle:@"Error" message:@"Failed to send mail."];
     break;
+    }
     default:
     break;
   }
   
-    // Close the Mail Interface
   [self dismissViewControllerAnimated:YES completion:NULL];
-}
-
--(void)showCantSendMailAlert {
-  
 }
 
 -(void)textButtonTapped {
@@ -691,10 +900,6 @@
     
     MFMessageComposeViewController *textVC = [[MFMessageComposeViewController alloc] init];
     textVC.messageComposeDelegate = self;
-    
-      // include subject if possible
-//    [MFMessageComposeViewController canSendSubject] ?
-//        [textVC setSubject:@"Sending you a melody"] : nil;
     
       // attach image if possible
     if ([MFMessageComposeViewController canSendAttachments] &&
@@ -710,7 +915,7 @@
     [self presentViewController:textVC animated:YES completion:nil];
     
   } else {
-    [self showCantSendTextAlert];
+    [self showCantSendAlertWithTitle:@"Error" message:@"This device is unable to send messages."];
   }
 }
 
@@ -718,20 +923,13 @@
                 didFinishWithResult:(MessageComposeResult)result {
   switch (result) {
     case MessageComposeResultCancelled:
-      NSLog(@"Text message cancelled");
       break;
-      
-    case MessageComposeResultFailed:
-    {
-    UIAlertView *warningAlert = [[UIAlertView alloc] initWithTitle:@"Error" message:@"Failed to send SMS!" delegate:nil cancelButtonTitle:@"OK" otherButtonTitles:nil];
-    [warningAlert show];
+    case MessageComposeResultFailed: {
+    [self showCantSendAlertWithTitle:@"Error" message:@"Failed to send message."];
     break;
     }
-      
     case MessageComposeResultSent:
-      NSLog(@"Text message sent");
       break;
-      
     default:
       break;
   }
@@ -739,9 +937,26 @@
   [self dismissViewControllerAnimated:YES completion:nil];
 }
 
--(void)showCantSendTextAlert {
-  UIAlertView *warningAlert = [[UIAlertView alloc] initWithTitle:@"Error" message:@"Your device doesn't support SMS!" delegate:nil cancelButtonTitle:@"OK" otherButtonTitles:nil];
+-(void)showCantSendAlertWithTitle:(NSString *)title message:(NSString *)message {
+  UIAlertView *warningAlert = [[UIAlertView alloc] initWithTitle:title message:message delegate:nil cancelButtonTitle:@"Okay" otherButtonTitles:nil];
   [warningAlert show];
+}
+
+#pragma mark - other button methods
+
+-(void)testButtonTapped {
+  NSLog(@"stuffOnStaves is %@, count %i", self.stuffOnStaves, self.stuffOnStaves.count);
+  
+}
+
+-(void)soundButtonTapped {
+  
+  
+}
+
+-(void)startOverButtonTapped {
+  UIActionSheet *actionSheet = [[UIActionSheet alloc] initWithTitle:@"Are you sure? You will lose all changes." delegate:self cancelButtonTitle:@"Cancel" destructiveButtonTitle:@"Okay" otherButtonTitles:nil, nil];
+  [actionSheet showInView:self.view];
 }
 
 #pragma mark - image methods ---------------------------------------------------

@@ -11,19 +11,25 @@
 
 @interface SymbolView : UILabel
 
-@property (nonatomic) MusicSymbol mySymbol;
+@property (nonatomic, readonly) MusicSymbol mySymbol;
+@property (nonatomic, readonly) NSUInteger noteDuration;
+@property (nonatomic) NSInteger staveIndex;
+
 @property (nonatomic) CGPoint homePosition;
 @property (nonatomic) BOOL onStaves;
 
 -(instancetype)initWithSymbol:(MusicSymbol)symbol;
 -(void)modifyGivenSymbol:(MusicSymbol)symbol;
+-(void)centerThisSymbol;
 
 -(void)beginTouch;
 -(void)endTouch;
 
--(void)changeStemDirection;
+-(void)changeStemDirectionIfNecessary;
 -(void)sendHomeToRack;
 
--(void)modifyLedgersGivenStaveIndex:(NSUInteger)staveIndex;
+-(void)modifyLedgersGivenStaveIndex;
+
+
 
 @end

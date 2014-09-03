@@ -16,6 +16,9 @@
 @property (strong, nonatomic) SymbolView *ledgerLine1;
 @property (strong, nonatomic) SymbolView *ledgerLine2;
 
+@property (nonatomic) MusicSymbol mySymbol;
+@property (nonatomic) NSUInteger noteDuration;
+
 @end
 
 @implementation SymbolView {
@@ -33,6 +36,9 @@
     self.textAlignment = NSTextAlignmentCenter;
     self.textColor = kSymbolColour;
     if ([self determineIfTouchableWithSymbol:symbol]) {
+      
+      self.homePosition = CGPointMake(CGFLOAT_MAX, CGFLOAT_MAX);
+      
       self.userInteractionEnabled = YES;
       [self modifyGivenSymbol:symbol]; // must be between these two
       [self instantiateLedgerLines];
@@ -56,6 +62,7 @@
 -(void)modifyGivenSymbol:(MusicSymbol)symbol {
   self.mySymbol = symbol;
   self.text = [self stringForMusicSymbol:symbol];
+  [self setNoteDurationGivenSymbol:symbol];
 
   if (self.userInteractionEnabled) {
     self.attributedText = [self verticallyAlignString:self.text];
@@ -71,13 +78,24 @@
   }
 }
 
--(void)modifyLedgersGivenStaveIndex:(NSUInteger)staveIndex {
+-(void)centerThisSymbol {
+  switch (self.mySymbol) {
+    case kWholeNoteRest:
+      self.center = CGPointMake(self.center.x, kStaveHeight * 5);
+      break;
+      
+    default:
+      break;
+  }
+}
+
+-(void)modifyLedgersGivenStaveIndex {
   
   CGFloat factor = _touched ? kTouchScaleFactor : 1.f;
   
-  if (staveIndex <= 6) {
+  if (self.staveIndex <= 6) {
   
-    switch (staveIndex) {
+    switch (self.staveIndex) {
       case 6: // high A
         self.ledgerLine1.hidden = NO;
         self.ledgerLine1.center = CGPointMake(self.frame.size.width / 2,
@@ -101,9 +119,9 @@
         break;
     }
     
-  } else if (staveIndex >= 18 && staveIndex <= 22) {
+  } else if (self.staveIndex >= 18 && self.staveIndex <= 22) {
     
-      switch (staveIndex) {
+      switch (self.staveIndex) {
       case 18: // low C
         self.ledgerLine1.hidden = NO;
         self.ledgerLine1.center = CGPointMake(self.frame.size.width / 2,
@@ -132,26 +150,33 @@
   }
 }
 
--(void)changeStemDirection {
-  switch (self.mySymbol) {
-    case kQuarterNoteStemUp:
-      self.mySymbol = kQuarterNoteStemDown;
-      break;
-    case kQuarterNoteStemDown:
-      self.mySymbol = kQuarterNoteStemUp;
-      break;
-    case kHalfNoteStemUp:
-      self.mySymbol = kHalfNoteStemDown;
-      break;
-    case kHalfNoteStemDown:
-      self.mySymbol = kHalfNoteStemUp;
-      break;
-    default:
-      break;
-  }
+-(void)changeStemDirectionIfNecessary {
   
-  [self modifyGivenSymbol:self.mySymbol];
-  [self repositionTouchSubview];
+  if ((self.staveIndex < 13 &&
+       (self.mySymbol == kQuarterNoteStemUp || self.mySymbol == kHalfNoteStemUp)) ||
+      (self.staveIndex >= 13 &&
+       (self.mySymbol == kQuarterNoteStemDown || self.mySymbol == kHalfNoteStemDown))) {
+
+    switch (self.mySymbol) {
+      case kQuarterNoteStemUp:
+        self.mySymbol = kQuarterNoteStemDown;
+        break;
+      case kQuarterNoteStemDown:
+        self.mySymbol = kQuarterNoteStemUp;
+        break;
+      case kHalfNoteStemUp:
+        self.mySymbol = kHalfNoteStemDown;
+        break;
+      case kHalfNoteStemDown:
+        self.mySymbol = kHalfNoteStemUp;
+        break;
+      default:
+        break;
+    }
+    
+    [self modifyGivenSymbol:self.mySymbol];
+    [self repositionTouchSubview];
+  }
 }
 
 -(void)beginTouch {
@@ -213,6 +238,28 @@
   
   [self addSubview:self.ledgerLine2];
   [self.ledgerLine2 modifyGivenSymbol:kLedgerLine];
+}
+
+-(void)setNoteDurationGivenSymbol:(MusicSymbol)symbol {
+  switch (symbol) {
+    case kWholeNote:
+    case kWholeNoteRest:
+      self.noteDuration = 4;
+      break;
+    case kHalfNoteStemUp:
+    case kHalfNoteStemDown:
+    case kHalfNoteRest:
+      self.noteDuration = 2;
+      break;
+    case kQuarterNoteStemUp:
+    case kQuarterNoteStemDown:
+    case kQuarterNoteRest:
+      self.noteDuration = 1;
+      break;
+    default:
+      self.noteDuration = 0;
+      break;
+  }
 }
 
 -(void)instantiateTouchSubview {
