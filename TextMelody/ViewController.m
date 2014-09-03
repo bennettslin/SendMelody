@@ -103,7 +103,7 @@ typedef enum noteMultiplier {
   }
   
   self.stavesView = [[StavesView alloc] initWithFrame:CGRectMake(0, 0, kStaveWidth, kContainerContentHeight)];
-  self.stavesView.center = CGPointMake(kStaveWidth / 2, _screenHeight / 3);
+  self.stavesView.center = CGPointMake(kStaveWidth / 2, (kIsIPhone ? kContainerContentHeight / 2 : _screenHeight / 3));
   
   self.stavesView.layer.borderColor = [UIColor redColor].CGColor;
   self.stavesView.layer.borderWidth = 2.f;
@@ -121,11 +121,11 @@ typedef enum noteMultiplier {
     [tempAccidentals addObject:accidental];
   }
   self.keySigAccidentals = [NSArray arrayWithArray:tempAccidentals];
-  self.keySigIndex = 11;
+  self.keySigIndex = 0;
   [self updateKeySigLabel];
   
   self.endBarline = [[SymbolView alloc] initWithSymbol:kEndBarline];
-  self.endBarline.center = CGPointMake(kStaveWidth - kStaveWidthMargin - self.endBarline.frame.size.width / 2, kStaveHeight * 7.5 + kStaveYAdjust);
+  self.endBarline.center = CGPointMake(kStaveWidth - kStaveWidthMargin - self.endBarline.frame.size.width / 2.25, kStaveHeight * 7.5 + kStaveYAdjust / 2);
   
     // only place to establish last barlineXPosition
   [self setXPosition:self.endBarline.center.x forBarline:4];
@@ -269,11 +269,11 @@ typedef enum noteMultiplier {
     
     if (h < 3) {
       SymbolView *barline = [[SymbolView alloc] initWithSymbol:kBarline];
-      barline.center = CGPointMake(0, kStaveHeight * 7.5);
+      [barline centerThisSymbol];
       [self.stuffOnStaves addObject:barline];
     }
   }
-  NSLog(@"stuff on staves is %@", self.stuffOnStaves);
+//  NSLog(@"stuff on staves is %@", self.stuffOnStaves);
 }
 
 -(void)repositionStuffOnStaves {
@@ -302,6 +302,7 @@ typedef enum noteMultiplier {
           // barline
       } else if (symbol.mySymbol == kBarline) {
         sumValue += kBarlineMultiplier;
+        [self setXPosition:leftEdge + sumValue forBarline:0];
       }
       
         // array of two halves
@@ -320,7 +321,6 @@ typedef enum noteMultiplier {
         }
       }
     }
-    
   }
   
   CGFloat widthUnit = range / sumValue;
@@ -398,6 +398,154 @@ typedef enum noteMultiplier {
   return leftEdge + noteXRange;
 }
 
+#pragma mark - URL code and decode methods
+
+-(NSString *)createURLStringFromStuffOnStavesAndSave {
+  
+    // each path component is four characters long
+  
+    // letter code is 'a' + staveIndex
+    // 0 means it's a rest
+    // 1 means it's a continuation of the previous note
+  
+  NSMutableArray *tempPathComponents = [NSMutableArray new];
+  [tempPathComponents addObject:@"/"];
+  
+    // hard code key signature as 0 for now
+  NSString *initialKey = @"0";
+  [tempPathComponents addObject:initialKey];
+  
+    // get elements of each bar
+  for (int i = 0; i < 4; i++) {
+    id wholeElement = [self getElementInBar:i];
+    
+      // it's a whole note or rest
+    if ([wholeElement isKindOfClass:SymbolView.class]) {
+      SymbolView *wholeSymbol = (SymbolView *)wholeElement;
+      
+        // it's a whole rest
+      if (wholeSymbol.mySymbol == kWholeNoteRest) {
+        NSString *wholeRestString = @"0111";
+        [tempPathComponents addObject:wholeRestString];
+        
+          // it's a whole note
+      } else {
+        unichar staveIndexChar = wholeSymbol.staveIndex + 'a';
+        unichar pathComponentChars[4] = {staveIndexChar, '1', '1', '1'};
+        NSString *wholeNoteString = [NSString stringWithCharacters:pathComponentChars length:4];
+        [tempPathComponents addObject:wholeNoteString];
+      }
+      
+        // it's an array of two halves
+    } else if ([wholeElement isKindOfClass:NSArray.class]) {
+      NSArray *wholeArray = (NSArray *)wholeElement;
+      
+      NSMutableArray *tempWholeStringComponents = [NSMutableArray new];
+      
+      for (int j = 0; j < 2; j++) {
+        id halfElement = wholeArray[j];
+        
+          // it's a half note or rest
+        if ([halfElement isKindOfClass:SymbolView.class]) {
+          SymbolView *halfSymbol = (SymbolView *)halfElement;
+          
+          
+            // it's a half rest
+          if (halfSymbol.mySymbol == kHalfNoteRest) {
+            [tempWholeStringComponents addObject:@"01"];
+            
+              // it's a half note
+          } else {
+            unichar staveIndexChar = halfSymbol.staveIndex + 'a';
+            unichar halfPathComponentChars[2] = {staveIndexChar, '1'};
+            NSString *halfNoteString = [NSString stringWithCharacters:halfPathComponentChars length:2];
+            [tempWholeStringComponents addObject:halfNoteString];
+          }
+
+            // it's an array of two quarters
+        } else if ([halfElement isKindOfClass:NSArray.class]) {
+          NSArray *quarterArray = (NSArray *)halfElement;
+          
+          for (int k = 0; k < 2; k++) {
+            id quarterElement = quarterArray[k];
+            
+              // it's a quarter note or rest (and can't be anything else, technically)
+            if ([quarterElement isKindOfClass:SymbolView.class]) {
+              SymbolView *quarterSymbol = (SymbolView *)quarterElement;
+              
+                // it's a quarter rest
+              if (quarterSymbol.mySymbol == kQuarterNoteRest) {
+                [tempWholeStringComponents addObject:@"0"];
+                
+                  // it's a quarter note
+              } else {
+                unichar staveIndexChar = quarterSymbol.staveIndex + 'a';
+                unichar quarterPathComponentChars[1] = {staveIndexChar};
+                NSString *quarterNoteString = [NSString stringWithCharacters:quarterPathComponentChars length:1];
+                [tempWholeStringComponents addObject:quarterNoteString];
+              }
+            }
+          }
+        }
+      }
+
+      NSString *stringFromComponents = [tempWholeStringComponents componentsJoinedByString:@""];
+      [tempPathComponents addObject:stringFromComponents];
+    }
+  }
+
+  NSString *finalURLString = [NSString stringWithFormat:@"melodySent://%@/%@/%@/%@/%@",
+                              initialKey, tempPathComponents[2], tempPathComponents[3], tempPathComponents[4], tempPathComponents[5]];
+  
+    // save to user defaults
+  NSArray *pathComponentsArray = [NSArray arrayWithArray:tempPathComponents];
+  [[NSUserDefaults standardUserDefaults] setObject:pathComponentsArray forKey:kPathComponentsKey];
+  
+  NSLog(@"final string is %@", finalURLString);
+  return finalURLString;
+}
+
+-(id)getElementInBar:(NSUInteger)barNumber {
+  
+  NSUInteger currentBarline = 0;
+  for (int i = 0; i < self.stuffOnStaves.count; i++) {
+    id element = self.stuffOnStaves[i];
+    
+      // get barline
+    if ([element isKindOfClass:SymbolView.class]) {
+      SymbolView *symbol = (SymbolView *)element;
+      if (symbol.mySymbol == kBarline) {
+        currentBarline++;
+      }
+    }
+    
+      // get next object after barline
+    if (currentBarline == barNumber) {
+      
+        // ensures that this method does not return a barline
+      
+        // it's a note
+      if ([element isKindOfClass:SymbolView.class]) {
+        SymbolView *symbol = (SymbolView *)element;
+        if (symbol.mySymbol != kBarline) {
+          return element;
+        }
+        
+          // it's an array of notes
+      } else if ([element isKindOfClass:NSArray.class]) {
+        return element;
+      }
+    }
+  }
+  
+  return nil;
+}
+
+
+-(void)populateStuffOnStavesArrayFromPathComponents {
+  
+}
+
 #pragma mark - touch methods
 
 -(void)touchesBegan:(NSSet *)touches withEvent:(UIEvent *)event {
@@ -407,11 +555,18 @@ typedef enum noteMultiplier {
   
   if ([touchedView.superview isKindOfClass:SymbolView.class]) {
     if (!self.touchedNote) {
+      
       self.touchedNote = (SymbolView *)touchedView.superview;
+      
+//      if ([self noteWasAlreadyPlacedOnStaves:self.touchedNote]) {
+//        [self removeFromStavesView];
+//      }
+      
       [self.touchedNote beginTouch];
       
         // center to account for touch offset
-      CGPoint realPoint = [self getStavesViewLocationForSelfLocation:touchPoint];
+      CGPoint realPoint = [self getStavesViewLocationForNote:self.touchedNote withSelfLocation:touchPoint];
+      
       self.touchOffset = CGVectorMake(self.touchedNote.center.x - realPoint.x,
                                       self.touchedNote.center.y - realPoint.y);
     }
@@ -419,16 +574,18 @@ typedef enum noteMultiplier {
 }
 
 -(void)touchesMoved:(NSSet *)touches withEvent:(UIEvent *)event {
+  
+//  NSLog(@"touches Moved");
   if (self.touchedNote) {
     self.touchedNoteMoved = YES;
     
       // recenter
     CGPoint touchPoint = [[touches anyObject] locationInView:self.view];
     CGPoint noteCenter = [self adjustForTouchOffsetLocationPoint:touchPoint];
-    CGPoint realCenter = [self getStavesViewLocationForSelfLocation:noteCenter];
+    CGPoint realCenter = [self getStavesViewLocationForNote:self.touchedNote withSelfLocation:noteCenter];
     self.touchedNote.center = realCenter;
     self.touchedNote.staveIndex = [self staveIndexForNoteCenter:realCenter];
-    NSLog(@"staveIndex is %i", self.touchedNote.staveIndex);
+//    NSLog(@"staveIndex is %li", (long)self.touchedNote.staveIndex);
     
           // change stem direction if necessary
     [self constrictStaveIndex];
@@ -484,10 +641,14 @@ typedef enum noteMultiplier {
       }
     }
      */
+  } else {
+//    NSLog(@"no touched note");
   }
 }
 
 -(void)touchesEnded:(NSSet *)touches withEvent:(UIEvent *)event {
+  
+//  NSLog(@"touchesEnded");
   if (self.touchedNote) {
     
     [self.touchedNote endTouch];
@@ -504,57 +665,9 @@ typedef enum noteMultiplier {
     
     self.touchedNote = nil;
   }
-  
-  NSLog(@"barlineXPositions %@", self.barlineXPositions);
 }
 
-  // FIXME: a lot of these will be changed
 #pragma mark - note to staves helper methods -----------------------------------
-
-//-(NSUInteger)countOfUnhiddenStuffOnStaves {
-//  NSUInteger count = 0;
-//  for (SymbolView *symbol in self.StuffOnStaves) {
-//    if (symbol.hidden == NO) {
-//      count++;
-//    }
-//  }
-//  return count;
-//}
-
--(NSUInteger)barForTouchedNote {
-    // touched note is within staves yPosition
-  if (self.touchedNote.staveIndex > 3 && self.touchedNote.staveIndex < 21) {
-    
-    CGFloat xPosition;
-    if (kIsIPhone && ![self noteWasAlreadyPlacedOnStaves:self.touchedNote]) {
-      UIScrollView *scrollView = (UIScrollView *)self.containerView;
-      xPosition = self.touchedNote.center.x + scrollView.contentOffset.x;
-    } else {
-      xPosition = self.touchedNote.center.x;
-    }
-
-    for (NSUInteger index = 0; index < 4; index++) {
-      if (xPosition > [self getXPositionForBarline:index] && xPosition <= [self getXPositionForBarline:index + 1]) {
-        return index;
-      }
-    }
-  }
-  
-  return NSUIntegerMax;
-}
-
--(NSUInteger)sectionForTouchedNoteInBar:(NSUInteger)barNumber withElementCount:(NSUInteger)count {
-  
-  CGFloat leftBarlineXPosition = [self getXPositionForBarline:barNumber];
-  CGFloat rightBarlineXPosition = [self getXPositionForBarline:barNumber + 1];
-  CGFloat barLength = rightBarlineXPosition - leftBarlineXPosition;
-  CGFloat barSectionLength = barLength / count;
-  
-  CGFloat touchedNoteXPositionWithinBar = self.touchedNote.center.x - leftBarlineXPosition;
-  
-  NSUInteger section = (NSUInteger)(touchedNoteXPositionWithinBar / barSectionLength);
-  return section;
-}
 
 -(void)setXPosition:(CGFloat)xPosition forBarline:(NSUInteger)key {
   if (key <= 4) {
@@ -571,27 +684,55 @@ typedef enum noteMultiplier {
   }
 }
 
--(NSArray *)getElementsInBar:(NSUInteger)barNumber {
-  
-  NSMutableArray *tempElementsInBar = [NSMutableArray new];
-  
-  NSUInteger currentBarline = 0;
-  for (int i = 0; i < self.stuffOnStaves.count; i++) {
-    SymbolView *symbol = self.stuffOnStaves[i];
+-(NSUInteger)barForTouchedNote {
+    // touched note is within staves yPosition
+  if (self.touchedNote.staveIndex > 3 && self.touchedNote.staveIndex < 21) {
     
-    if (symbol.mySymbol == kBarline) {
-      currentBarline++;
+    CGFloat xPosition;
+    if (kIsIPhone && ![self noteWasAlreadyPlacedOnStaves:self.touchedNote]) {
+      UIScrollView *scrollView = (UIScrollView *)self.containerView;
+      xPosition = self.touchedNote.center.x + scrollView.contentOffset.x;
+    } else {
+      xPosition = self.touchedNote.center.x;
     }
     
-    if (currentBarline == barNumber) {
-      if (symbol.mySymbol != kBarline) {
-        [tempElementsInBar addObject:symbol];
+    for (NSUInteger index = 0; index < 4; index++) {
+      if (xPosition > [self getXPositionForBarline:index] && xPosition <= [self getXPositionForBarline:index + 1]) {
+        return index;
       }
     }
   }
   
-  return [NSArray arrayWithArray:tempElementsInBar];
+  return NSUIntegerMax;
 }
+
+//-(NSUInteger)countOfUnhiddenStuffOnStaves {
+//  NSUInteger count = 0;
+//  for (SymbolView *symbol in self.StuffOnStaves) {
+//    if (symbol.hidden == NO) {
+//      count++;
+//    }
+//  }
+//  return count;
+//}
+
+/*
+
+
+-(NSUInteger)sectionForTouchedNoteInBar:(NSUInteger)barNumber withElementCount:(NSUInteger)count {
+  
+  CGFloat leftBarlineXPosition = [self getXPositionForBarline:barNumber];
+  CGFloat rightBarlineXPosition = [self getXPositionForBarline:barNumber + 1];
+  CGFloat barLength = rightBarlineXPosition - leftBarlineXPosition;
+  CGFloat barSectionLength = barLength / count;
+  
+  CGFloat touchedNoteXPositionWithinBar = self.touchedNote.center.x - leftBarlineXPosition;
+  
+  NSUInteger section = (NSUInteger)(touchedNoteXPositionWithinBar / barSectionLength);
+  return section;
+}
+
+
 
 -(void)toggleObject:(id)object hidden:(BOOL)hide {
   if ([object isKindOfClass:SymbolView.class]) {
@@ -604,6 +745,8 @@ typedef enum noteMultiplier {
     }
   }
 }
+
+*/
 
 #pragma mark - keySig methods
 
@@ -714,7 +857,7 @@ typedef enum noteMultiplier {
       break;
   }
   
-  newNote.homePosition = CGPointMake(xPosition, _screenHeight * 3/4);
+  newNote.homePosition = CGPointMake(xPosition, _screenHeight * 4/5);
   newNote.center = newNote.homePosition;
   
   [self.view addSubview:newNote];
@@ -807,18 +950,35 @@ typedef enum noteMultiplier {
   return staveIndex;
 }
 
--(CGPoint)getStavesViewLocationForSelfLocation:(CGPoint)selfLocation {
+-(void)removeFromStavesView {
+
+    // this works in iPhone for now because stavesHeight origin.y is zero
   
-  CGFloat xPosition;
+    // FIXME: this does not work in iPad!
   
-  if (kIsIPhone && [self noteWasAlreadyPlacedOnStaves:self.touchedNote]) {
+//  self.touchedNote.homePosition = CGPointZero;
+//  [self.containerView addSubview:self.touchedNote];
+}
+
+-(CGPoint)getStavesViewLocationForNote:(SymbolView *)note withSelfLocation:(CGPoint)selfLocation {
+  
+  CGFloat xPosition, yPosition;
+  
+  if (kIsIPhone && [self noteWasAlreadyPlacedOnStaves:note]) {
     UIScrollView *scrollView = (UIScrollView *)self.containerView;
     xPosition = selfLocation.x + scrollView.contentOffset.x;
   } else {
     xPosition = selfLocation.x;
   }
+  
+//  if ([self noteWasAlreadyPlacedOnStaves:note]) {
+//    yPosition = selfLocation.y;
+//  } else {
+//    yPosition = selfLocation.y + self.stavesView.frame.origin.y;;
+//  }
 
-  return CGPointMake(xPosition, selfLocation.y);
+  yPosition = selfLocation.y;
+  return CGPointMake(xPosition, yPosition);
 }
 
 -(void)centerNote:(SymbolView *)note {
@@ -849,7 +1009,7 @@ typedef enum noteMultiplier {
                             [self stavePositionForStaveIndex:note.staveIndex]);
   }
 
-  note.center = [self getStavesViewLocationForSelfLocation:selfPoint];
+  note.center = [self getStavesViewLocationForNote:note withSelfLocation:selfPoint];
 }
 
 #pragma mark - mail and text methods -------------------------------------------
@@ -861,7 +1021,9 @@ typedef enum noteMultiplier {
     mailVC.mailComposeDelegate = self;
     
     [mailVC setSubject:@"Sending you a melody"];
-    [mailVC setMessageBody:@"Hi!" isHTML:NO];
+    
+    NSString *bodyText = [self createURLStringFromStuffOnStavesAndSave];
+    [mailVC setMessageBody:bodyText isHTML:NO];
     
       // Add attachment
     NSData *imageData = [self generatePNGDataFromStavesView];
@@ -909,7 +1071,8 @@ typedef enum noteMultiplier {
       [textVC addAttachmentData:imageData typeIdentifier:@"public.data" filename:@"melody.png"];
     }
     
-    [textVC setBody:@"melodySent://badaboop/bing/bang/boom"];
+    NSString *bodyText = [self createURLStringFromStuffOnStavesAndSave];
+    [textVC setBody:bodyText];
     
       // Present message view controller on screen
     [self presentViewController:textVC animated:YES completion:nil];
@@ -945,7 +1108,7 @@ typedef enum noteMultiplier {
 #pragma mark - other button methods
 
 -(void)testButtonTapped {
-  NSLog(@"stuffOnStaves is %@, count %i", self.stuffOnStaves, self.stuffOnStaves.count);
+  NSLog(@"stuffOnStaves is %@, count %lu", self.stuffOnStaves, (unsigned long)self.stuffOnStaves.count);
   
 }
 
@@ -974,9 +1137,9 @@ typedef enum noteMultiplier {
 - (void)image:(UIImage *)image didFinishSavingWithError:(NSError *)error
   contextInfo:(void *)contextInfo {
   if (error) {
-    NSLog(@"error %@", error);
+//    NSLog(@"error %@", error);
   } else {
-    NSLog(@"no error");
+//    NSLog(@"no error");
   }
 }
 

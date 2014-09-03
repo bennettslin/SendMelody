@@ -7,6 +7,7 @@
 //
 
 #import "AppDelegate.h"
+#import "Constants.h"
 
 @interface AppDelegate ()
 
@@ -18,11 +19,22 @@
     sourceApplication:(NSString *)sourceApplication annotation:(id)annotation {
   
   NSLog(@"URL pathComponents: %@", [url pathComponents]);
+  
+  NSArray *pathComponents = [url pathComponents];
+  [[NSUserDefaults standardUserDefaults] setObject:pathComponents forKey:kPathComponentsKey];
+  
   return YES;
 }
 
 -(BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions {
   // Override point for customization after application launch.
+  
+  if (![[NSUserDefaults standardUserDefaults] objectForKey:kPathComponentsKey]) {
+    
+    NSArray *defaultPathComponents = @[@"/", @"0", @"0111", @"0111", @"0111", @"0111"];
+    [[NSUserDefaults standardUserDefaults] setObject:defaultPathComponents forKey:kPathComponentsKey];
+  }
+  
   return YES;
 }
 

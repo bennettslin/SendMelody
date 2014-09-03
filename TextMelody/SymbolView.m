@@ -83,7 +83,9 @@
     case kWholeNoteRest:
       self.center = CGPointMake(self.center.x, kStaveHeight * 5);
       break;
-      
+    case kBarline:
+      self.center = CGPointMake(self.center.x, kStaveHeight * 7.5 + kStaveYAdjust / 2);
+      break;
     default:
       break;
   }
@@ -152,8 +154,11 @@
 
 -(void)changeStemDirectionIfNecessary {
   
-  if ((self.staveIndex < 13 &&
+    // staveIndex 12 is B4
+  if ((self.staveIndex <= 12 &&
        (self.mySymbol == kQuarterNoteStemUp || self.mySymbol == kHalfNoteStemUp)) ||
+      
+      // staveIndex 13 is A4
       (self.staveIndex >= 13 &&
        (self.mySymbol == kQuarterNoteStemDown || self.mySymbol == kHalfNoteStemDown))) {
 

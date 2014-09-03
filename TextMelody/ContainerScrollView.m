@@ -36,16 +36,21 @@
 
   if ([touchedView.superview isKindOfClass:SymbolView.class]) {
     SymbolView *note = (SymbolView *)touchedView.superview;
+
     [note beginTouch];
   }
   return YES;
 }
 
 -(void)touchesBegan:(NSSet *)touches withEvent:(UIEvent *)event {
+  
+  NSLog(@"touchesBegan from container");
   [self.customDelegate touchesBegan:touches withEvent:event];
 }
 
 -(void)touchesMoved:(NSSet *)touches withEvent:(UIEvent *)event {
+  
+  NSLog(@"touchesMoved from container");
   [self.customDelegate touchesMoved:touches withEvent:event];
 }
 

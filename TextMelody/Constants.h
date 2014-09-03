@@ -10,6 +10,7 @@
 #define TextMelody_Constants_h
 
 #define kIsIPhone (UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomPhone)
+#define kPathComponentsKey @"pathComponents"
 
 #define kFontSonata @"Sonata"
 #define kSymbolFontSize (kStaveHeight * 4)
