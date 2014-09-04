@@ -36,12 +36,12 @@ typedef enum noteMultiplier {
 @property (nonatomic) CGVector touchOffset;
 @property (nonatomic) BOOL touchedNoteMoved;
 
-@property (strong, nonatomic) UIButton *mailButton;
-@property (strong, nonatomic) UIButton *textButton;
+@property (weak, nonatomic) IBOutlet UIButton *mailButton;
+@property (weak, nonatomic) IBOutlet UIButton *textButton;
 
-@property (strong, nonatomic) UIButton *testButton;
-@property (strong, nonatomic) UIButton *soundButton;
-@property (strong, nonatomic) UIButton *startOverButton;
+@property (weak, nonatomic) IBOutlet UIButton *testButton;
+//@property (strong, nonatomic) UIButton *soundButton;
+@property (weak, nonatomic) IBOutlet UIButton *startOverButton;
 
 @property (strong, nonatomic) NSMutableDictionary *barlineXPositions;
 @property (strong, nonatomic) id temporaryObject;
@@ -57,6 +57,8 @@ typedef enum noteMultiplier {
 -(void)viewDidLoad {
   [super viewDidLoad];
   
+  self.view.backgroundColor = kBackgroundColour;
+  
   self.barlineXPositions = [[NSMutableDictionary alloc] initWithObjects:@[@0.f, @0.f, @0.f, @0.f, @0.f]
                                                                 forKeys:@[@0, @1, @2, @3, @4]];
                             
@@ -69,9 +71,6 @@ typedef enum noteMultiplier {
   [self instantiateNewNoteWithSymbol:kQuarterNoteStemUp];
   [self instantiateNewNoteWithSymbol:kHalfNoteStemUp];
   [self instantiateNewNoteWithSymbol:kWholeNote];
-
-  [self instantiateMessageButtons];
-  [self instantiateOtherButtons];
   
   [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(instantiateAndPositionStaves) name:UIApplicationDidBecomeActiveNotification object:nil];
 }
@@ -84,6 +83,10 @@ typedef enum noteMultiplier {
 
   self.textButton.hidden = ![MFMessageComposeViewController canSendText];
   self.textButton.enabled = [MFMessageComposeViewController canSendText];
+  
+  NSLog(@"instantiate message buttons");
+  [self instantiateMessageButtons];
+  [self instantiateOtherButtons];
 }
 
 -(void)instantiateAndPositionStaves {
@@ -112,8 +115,8 @@ typedef enum noteMultiplier {
   self.stavesView = [[StavesView alloc] initWithFrame:CGRectMake(0, 0, kStaveWidth, kContainerContentHeight)];
   self.stavesView.center = CGPointMake(kStaveWidth / 2, (kIsIPhone ? kContainerContentHeight / 2 : _screenHeight / 3));
   
-  self.stavesView.layer.borderColor = [UIColor redColor].CGColor;
-  self.stavesView.layer.borderWidth = 2.f;
+//  self.stavesView.layer.borderColor = [UIColor redColor].CGColor;
+//  self.stavesView.layer.borderWidth = 2.f;
   
   [self.containerView addSubview:self.stavesView];
   
@@ -141,46 +144,36 @@ typedef enum noteMultiplier {
 
 -(void)instantiateMessageButtons {
 
-  self.mailButton = [[UIButton alloc] initWithFrame:CGRectMake(_screenWidth - kButtonLength, _screenHeight - kButtonLength, kButtonLength, kButtonLength)];
-  self.mailButton.backgroundColor = [UIColor greenColor];
-  [self.mailButton setTitle:@"mail" forState:UIControlStateNormal];
-  [self.mailButton addTarget:self
-                      action:@selector(mailButtonTapped)
-            forControlEvents:UIControlEventTouchUpInside];
+  self.mailButton.frame = CGRectMake(_screenWidth - kButtonLength - kButtonMargin, _screenHeight - kButtonLength - kButtonMargin, kButtonLength, kButtonLength);
+  self.mailButton.backgroundColor = kButtonColour;
+  self.mailButton.layer.cornerRadius = kButtonLength / 4;
+  self.mailButton.clipsToBounds = YES;
   [self.view addSubview:self.mailButton];
   
-  self.textButton = [[UIButton alloc] initWithFrame:CGRectMake(_screenWidth - kButtonLength, _screenHeight - kButtonLength * 2, kButtonLength, kButtonLength)];
-  self.textButton.backgroundColor = [UIColor blueColor];
-  [self.textButton setTitle:@"text" forState:UIControlStateNormal];
-  [self.textButton addTarget:self
-                      action:@selector(textButtonTapped)
-            forControlEvents:UIControlEventTouchUpInside];
+  self.textButton.frame = CGRectMake(_screenWidth - kButtonLength - kButtonMargin, _screenHeight - kButtonLength * 2 - kButtonMargin * 2, kButtonLength, kButtonLength);
+  self.textButton.backgroundColor = kButtonColour;
+  self.textButton.layer.cornerRadius = kButtonLength / 4;
+  self.textButton.clipsToBounds = YES;
   [self.view addSubview:self.textButton];
 }
 
 -(void)instantiateOtherButtons {
-  self.testButton = [[UIButton alloc] initWithFrame:CGRectMake(0, _screenHeight - kButtonLength * 3, kButtonLength, kButtonLength)];
-  self.testButton.backgroundColor = [UIColor redColor];
-  [self.testButton setTitle:@"test" forState:UIControlStateNormal];
-  [self.testButton addTarget:self
-                      action:@selector(testButtonTapped)
-            forControlEvents:UIControlEventTouchUpInside];
+  self.testButton.frame = CGRectMake(kButtonMargin, _screenHeight - kButtonLength * 2 - kButtonMargin * 2, kButtonLength, kButtonLength);
+  self.testButton.backgroundColor = kButtonColour;
+  self.testButton.layer.cornerRadius = kButtonLength / 4;
+  self.testButton.clipsToBounds = YES;
   [self.view addSubview:self.testButton];
   
+  /*
   self.soundButton = [[UIButton alloc] initWithFrame:CGRectMake(0, _screenHeight - kButtonLength * 2, kButtonLength, kButtonLength)];
   self.soundButton.backgroundColor = [UIColor purpleColor];
-  [self.soundButton setTitle:@"sound" forState:UIControlStateNormal];
-  [self.soundButton addTarget:self
-                      action:@selector(soundButtonTapped)
-            forControlEvents:UIControlEventTouchUpInside];
   [self.view addSubview:self.soundButton];
-  
-  self.startOverButton = [[UIButton alloc] initWithFrame:CGRectMake(0, _screenHeight - kButtonLength, kButtonLength, kButtonLength)];
-  self.startOverButton.backgroundColor = [UIColor orangeColor];
-  [self.startOverButton setTitle:@"new" forState:UIControlStateNormal];
-  [self.startOverButton addTarget:self
-                       action:@selector(startOverButtonTapped)
-             forControlEvents:UIControlEventTouchUpInside];
+  */
+   
+  self.startOverButton.frame = CGRectMake(kButtonMargin, _screenHeight - kButtonLength - kButtonMargin, kButtonLength, kButtonLength);
+  self.startOverButton.backgroundColor = kButtonColour;
+  self.startOverButton.layer.cornerRadius = kButtonLength / 4;
+  self.startOverButton.clipsToBounds = YES;
   [self.view addSubview:self.startOverButton];
 }
 
@@ -208,7 +201,6 @@ typedef enum noteMultiplier {
           // it's a whole note
         unichar wholeFirstChar = [wholeString characterAtIndex:0];
         if ([self isValidNote:wholeFirstChar]) {
-          NSLog(@"instantiate whole note");
           
           SymbolView *wholeNote = [[SymbolView alloc] initWithSymbol:kWholeNote];
           wholeNote.staveIndex = wholeFirstChar - 'a';
@@ -223,7 +215,6 @@ typedef enum noteMultiplier {
           
         } else {
           
-          NSLog(@"something wrong with whole note at bar %i, reset", i);
           [self resetToDefaultPathComponentsAndRepopulateStuffOnStaves];
           return;
         }
@@ -257,7 +248,6 @@ typedef enum noteMultiplier {
               
             } else {
               
-              NSLog(@"something wrong with half note at bar %i, section %i, reset", i, j);
               [self resetToDefaultPathComponentsAndRepopulateStuffOnStaves];
               return;
             }
@@ -288,7 +278,6 @@ typedef enum noteMultiplier {
                 
               } else {
 
-                NSLog(@"something wrong with quarter note %@ at bar %i, section %i, section %i, reset", quarterString, i, j, k);
                 [self resetToDefaultPathComponentsAndRepopulateStuffOnStaves];
                 return;
               }
@@ -312,7 +301,6 @@ typedef enum noteMultiplier {
       // is less or more than four components
   } else {
     
-    NSLog(@"count is not 4");
     [self resetToDefaultPathComponentsAndRepopulateStuffOnStaves];
     return;
   }
@@ -562,7 +550,7 @@ typedef enum noteMultiplier {
     }
   }
 
-  NSString *finalURLString = [NSString stringWithFormat:@"melodySent://%@/%@/%@/%@/%@",
+  NSString *finalURLString = [NSString stringWithFormat:@"(Requires MelodySent from App Store.)\nmelodySent://%@/%@/%@/%@/%@",
                               initialKey, tempPathComponents[1], tempPathComponents[2], tempPathComponents[3], tempPathComponents[4]];
   
     // save to user defaults
@@ -571,7 +559,6 @@ typedef enum noteMultiplier {
   [[NSUserDefaults standardUserDefaults] setObject:pathComponentsArray forKey:kPathComponentsKey];
   [[NSUserDefaults standardUserDefaults] synchronize];
   
-  NSLog(@"final string is %@", finalURLString);
   return finalURLString;
 }
 
@@ -640,7 +627,6 @@ typedef enum noteMultiplier {
 
 -(void)touchesMoved:(NSSet *)touches withEvent:(UIEvent *)event {
   
-//  NSLog(@"touches Moved");
   if (self.touchedNote) {
     self.touchedNoteMoved = YES;
     
@@ -650,7 +636,6 @@ typedef enum noteMultiplier {
     CGPoint realCenter = [self getStavesViewLocationForNote:self.touchedNote withSelfLocation:noteCenter];
     self.touchedNote.center = realCenter;
     self.touchedNote.staveIndex = [self staveIndexForNoteCenter:realCenter];
-//    NSLog(@"staveIndex is %li", (long)self.touchedNote.staveIndex);
     
           // change stem direction if necessary
     [self constrictStaveIndex];
@@ -706,14 +691,11 @@ typedef enum noteMultiplier {
       }
     }
      */
-  } else {
-//    NSLog(@"no touched note");
   }
 }
 
 -(void)touchesEnded:(NSSet *)touches withEvent:(UIEvent *)event {
   
-//  NSLog(@"touchesEnded");
   if (self.touchedNote) {
     
     [self.touchedNote endTouch];
@@ -1051,6 +1033,7 @@ typedef enum noteMultiplier {
   }
 
   note.center = [self getStavesViewLocationForNote:note withSelfLocation:selfPoint];
+  [note changeStemDirectionIfNecessary];
 }
 
 #pragma mark - mail and text methods -------------------------------------------
@@ -1061,7 +1044,7 @@ typedef enum noteMultiplier {
     MFMailComposeViewController *mailVC = [[MFMailComposeViewController alloc] init];
     mailVC.mailComposeDelegate = self;
     
-    [mailVC setSubject:@"Sending you a melody"];
+    [mailVC setSubject:@"Here's a melody"];
     
     NSString *bodyText = [self createURLStringFromStuffOnStavesAndSave];
     [mailVC setMessageBody:bodyText isHTML:NO];
@@ -1073,7 +1056,7 @@ typedef enum noteMultiplier {
     [self presentViewController:mailVC animated:YES completion:NULL];
     
   } else {
-    [self showCantSendAlertWithTitle:@"Error" message:@"This device is unable to send mail."];
+    [self showCantSendAlertWithTitle:@"Uh oh..." message:@"This device is unable to send mail."];
   }
 }
 
@@ -1088,7 +1071,7 @@ typedef enum noteMultiplier {
     case MFMailComposeResultSent:
     break;
     case MFMailComposeResultFailed: {
-    [self showCantSendAlertWithTitle:@"Error" message:@"Failed to send mail."];
+    [self showCantSendAlertWithTitle:@"Hmm..." message:@"Failed to send mail."];
     break;
     }
     default:
@@ -1119,7 +1102,7 @@ typedef enum noteMultiplier {
     [self presentViewController:textVC animated:YES completion:nil];
     
   } else {
-    [self showCantSendAlertWithTitle:@"Error" message:@"This device is unable to send messages."];
+    [self showCantSendAlertWithTitle:@"Uh oh..." message:@"This device is unable to send messages."];
   }
 }
 
@@ -1129,7 +1112,7 @@ typedef enum noteMultiplier {
     case MessageComposeResultCancelled:
       break;
     case MessageComposeResultFailed: {
-    [self showCantSendAlertWithTitle:@"Error" message:@"Failed to send message."];
+    [self showCantSendAlertWithTitle:@"Hmm..." message:@"Failed to send message."];
     break;
     }
     case MessageComposeResultSent:
@@ -1152,11 +1135,6 @@ typedef enum noteMultiplier {
   NSLog(@"stuffOnStaves is %@, count %lu", self.stuffOnStaves, (unsigned long)self.stuffOnStaves.count);
   NSLog(@"path components %@", [[NSUserDefaults standardUserDefaults] objectForKey:kPathComponentsKey]);
   NSLog(@"barlineXPositions %@", self.barlineXPositions);
-}
-
--(void)soundButtonTapped {
-  
-  
 }
 
 -(void)startOverButtonTapped {
@@ -1184,9 +1162,19 @@ typedef enum noteMultiplier {
 - (void)image:(UIImage *)image didFinishSavingWithError:(NSError *)error
   contextInfo:(void *)contextInfo {
   if (error) {
-//    NSLog(@"error %@", error);
-  } else {
-//    NSLog(@"no error");
+    [self showCantSendAlertWithTitle:@"Oops..." message:@"Error with saving image."];
+  }
+}
+
+-(IBAction)buttonTapped:(UIButton *)sender {
+  if (sender == self.testButton) {
+    [self testButtonTapped];
+  } else if (sender == self.startOverButton) {
+    [self startOverButtonTapped];
+  } else if (sender == self.textButton) {
+    [self textButtonTapped];
+  } else if (sender == self.mailButton) {
+    [self mailButtonTapped];
   }
 }
 
@@ -1198,6 +1186,10 @@ typedef enum noteMultiplier {
 
 -(void)didReceiveMemoryWarning {
   [super didReceiveMemoryWarning];
+}
+
+-(NSUInteger)supportedInterfaceOrientations {
+  return UIInterfaceOrientationMaskLandscape;
 }
 
 @end

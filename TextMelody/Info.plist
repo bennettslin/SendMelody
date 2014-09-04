@@ -21,12 +21,12 @@
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>
+			<key>CFBundleURLName</key>
+			<string>com.bennettslin.MelodySent</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
 				<string>melodySent</string>
 			</array>
-			<key>CFBundleURLName</key>
-			<string>com.bennettslin.MelodySent</string>
 		</dict>
 	</array>
 	<key>CFBundleVersion</key>

@@ -17,16 +17,16 @@
 
 #define kFontSonata @"Sonata"
 #define kSymbolFontSize (kStaveHeight * 4)
-#define kSymbolColour [UIColor blackColor]
 
 #define kButtonLength (kIsIPhone ? 55.f : 80.f)
+#define kButtonMargin (kButtonLength / 6)
 
 #define kStaveWidth 1024.f // this must be 768 or less
 #define kStaveWidthMargin (kStaveWidth * 0.025)
 #define kStaveHeight (kIsIPhone ? 16.f : 16.f) // test
 #define kContainerContentHeight (kStaveHeight * 12)
 
-#define kStaveColour [UIColor blackColor]
+#define kStaveColour kSymbolColour
 #define kStaveLineDensity 1.f
 #define kStaveYAdjust (kStaveHeight * -0.125f)
 
@@ -35,7 +35,9 @@
 
 #define kAnimationDuration 0.15f
 
-#define kBackgroundYellow [UIColor colorWithRed:0.95f green:0.95f blue:0.85f alpha:1.f]
+#define kBackgroundColour [UIColor colorWithRed:0.94f green:0.94f blue:0.94f alpha:1.f]
+#define kSymbolColour [UIColor colorWithRed:0.06f green:0.06f blue:0.06f alpha:1.f]
+#define kButtonColour [UIColor colorWithRed:0.5f green:0.5f blue:0.5f alpha:1.f]
 
 typedef enum musicSymbol {
   kTrebleClef,
