@@ -557,7 +557,7 @@ typedef enum noteMultiplier {
     }
   }
 
-  NSString *finalURLString = [NSString stringWithFormat:@"(Requires MelodySent iOS app)\nmelodySent://%@/%@/%@/%@/%@",
+  NSString *finalURLString = [NSString stringWithFormat:@"melodySent://%@/%@/%@/%@/%@\n(requires MelodySent iOS app)",
                               initialKey, tempPathComponents[2], tempPathComponents[3], tempPathComponents[4], tempPathComponents[5]];
   
     // save to user defaults
@@ -642,6 +642,7 @@ typedef enum noteMultiplier {
         
       }
     }
+    [self.touchedNote modifyLedgersGivenStaveIndex];
   }
 }
 
@@ -727,11 +728,11 @@ typedef enum noteMultiplier {
       
         // check whether to add to staves
       [self constrictStaveIndex];
-      [self.touchedNote modifyLedgersGivenStaveIndex];
       
       [self decideWhetherToAddTouchedNoteToStaves];
       self.touchedNoteMoved = NO;
     }
+    [self.touchedNote modifyLedgersGivenStaveIndex];
     
     self.touchedNote = nil;
   }
