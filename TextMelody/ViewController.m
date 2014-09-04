@@ -34,7 +34,7 @@ typedef enum noteMultiplier {
 @property (strong, nonatomic) NSMutableArray *stuffOnStaves;
 
 @property (nonatomic) CGVector touchOffset;
-@property (nonatomic) BOOL touchedNoteMoved;
+//@property (nonatomic) BOOL touchedNoteMoved;
 
 @property (weak, nonatomic) IBOutlet UIButton *mailButton;
 @property (weak, nonatomic) IBOutlet UIButton *textButton;
@@ -98,7 +98,7 @@ typedef enum noteMultiplier {
 
 -(void)viewWillDisappear:(BOOL)animated {
   self.touchedNote = nil;
-  self.touchedNoteMoved = NO;
+//  self.touchedNoteMoved = NO;
 }
 
 -(void)loadFixedViews {
@@ -649,7 +649,7 @@ typedef enum noteMultiplier {
 -(void)touchesMoved:(NSSet *)touches withEvent:(UIEvent *)event {
   
   if (self.touchedNote) {
-    self.touchedNoteMoved = YES;
+//    self.touchedNoteMoved = YES;
     
       // recenter
     CGPoint touchPoint = [[touches anyObject] locationInView:self.view];
@@ -724,14 +724,10 @@ typedef enum noteMultiplier {
     
     [self.touchedNote endTouch];
     
-    if (self.touchedNoteMoved) {
-      
-        // check whether to add to staves
-      [self constrictStaveIndex];
-      
-      [self decideWhetherToAddTouchedNoteToStaves];
-      self.touchedNoteMoved = NO;
-    }
+      // check whether to add to staves
+    [self constrictStaveIndex];
+    [self decideWhetherToAddTouchedNoteToStaves];
+    
     [self.touchedNote modifyLedgersGivenStaveIndex];
     
     self.touchedNote = nil;
