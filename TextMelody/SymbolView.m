@@ -283,7 +283,7 @@
 }
 
 -(void)instantiateTouchSubview {
-  self.touchSubview = [[TouchSubview alloc] initWithFrame:CGRectMake(0, 0, kTouchSubviewRadius * 2, kTouchSubviewRadius * 4)];
+  self.touchSubview = [[TouchSubview alloc] initWithFrame:CGRectMake(0, 0, kTouchSubviewRadius * 2, kTouchSubviewRadius * 2)];
   [self addSubview:self.touchSubview];
   [self repositionTouchSubview];
 }
@@ -297,7 +297,7 @@
   self.touchSubview.clipsToBounds = YES;
   
   self.touchSubview.center = CGPointMake(self.frame.size.width / 2,
-                                         (self.frame.size.height + kStaveHeight) / 2 + kTouchSubviewRadius * 3/4);
+                                         self.frame.size.height / 2);
 }
 
 -(NSAttributedString *)verticallyAlignString:(NSString *)string {

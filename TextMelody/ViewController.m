@@ -186,8 +186,8 @@ typedef enum noteMultiplier {
   NSArray *pathComponents = [[NSUserDefaults standardUserDefaults] objectForKey:kPathComponentsKey];
   NSMutableArray *tempWholeStringsArray = [NSMutableArray arrayWithArray:pathComponents];
   
-  [tempWholeStringsArray removeObjectAtIndex:0];
-  [tempWholeStringsArray removeObjectAtIndex:0];
+  [tempWholeStringsArray removeObjectAtIndex:0]; // removes @"/"
+  [tempWholeStringsArray removeObjectAtIndex:0]; // removes @"key0"
   
   NSArray *wholeStringsArray = [NSArray arrayWithArray:tempWholeStringsArray];
   
@@ -474,7 +474,7 @@ typedef enum noteMultiplier {
   [tempPathComponents addObject:initialSlash];
   
     // hard code key signature as 0 for now
-  NSString *initialKey = @"key0";
+  NSString *initialKey = @"/key0";
   
   [tempPathComponents addObject:initialKey];
   
@@ -557,8 +557,8 @@ typedef enum noteMultiplier {
     }
   }
 
-  NSString *finalURLString = [NSString stringWithFormat:@"(Requires MelodySent from App Store.)\nmelodySent://%@/%@/%@/%@/%@",
-                              initialKey, tempPathComponents[1], tempPathComponents[2], tempPathComponents[3], tempPathComponents[4]];
+  NSString *finalURLString = [NSString stringWithFormat:@"(Requires MelodySent iOS app)\nmelodySent://%@/%@/%@/%@/%@",
+                              initialKey, tempPathComponents[2], tempPathComponents[3], tempPathComponents[4], tempPathComponents[5]];
   
     // save to user defaults
   NSArray *pathComponentsArray = [NSArray arrayWithArray:tempPathComponents];
@@ -620,17 +620,27 @@ typedef enum noteMultiplier {
       
       self.touchedNote = (SymbolView *)touchedView.superview;
       
-//      if ([self noteWasAlreadyPlacedOnStaves:self.touchedNote]) {
-//        [self removeFromStavesView];
-//      }
-      
       [self.touchedNote beginTouch];
       
-        // center to account for touch offset
-      CGPoint realPoint = [self getStavesViewLocationForNote:self.touchedNote withSelfLocation:touchPoint];
-      
-      self.touchOffset = CGVectorMake(self.touchedNote.center.x - realPoint.x,
-                                      self.touchedNote.center.y - realPoint.y);
+      if ([self noteWasAlreadyPlacedOnStaves:self.touchedNote]) {
+        [self removeFromStavesView];
+
+        CGPoint realPoint = [self getStavesViewLocationForNote:self.touchedNote withSelfLocation:touchPoint];
+        
+        self.touchOffset = CGVectorMake(self.touchedNote.center.x - realPoint.x,
+                                        self.touchedNote.center.y + self.stavesView.frame.origin.y - realPoint.y);
+        
+        self.touchedNote.center = [self adjustForTouchOffsetLocationPoint:realPoint];
+        
+      } else {
+        
+          // center to account for touch offset
+        CGPoint realPoint = [self getStavesViewLocationForNote:self.touchedNote withSelfLocation:touchPoint];
+        
+        self.touchOffset = CGVectorMake(self.touchedNote.center.x - realPoint.x,
+                                        self.touchedNote.center.y - realPoint.y);
+        
+      }
     }
   }
 }
@@ -643,6 +653,9 @@ typedef enum noteMultiplier {
       // recenter
     CGPoint touchPoint = [[touches anyObject] locationInView:self.view];
     CGPoint noteCenter = [self adjustForTouchOffsetLocationPoint:touchPoint];
+    
+    NSLog(@"touch offset is %.2f, %.2f", self.touchOffset.dx, self.touchOffset.dy);
+    
     CGPoint realCenter = [self getStavesViewLocationForNote:self.touchedNote withSelfLocation:noteCenter];
     self.touchedNote.center = realCenter;
     self.touchedNote.staveIndex = [self staveIndexForNoteCenter:realCenter];
@@ -746,9 +759,8 @@ typedef enum noteMultiplier {
   if (self.touchedNote.staveIndex > 3 && self.touchedNote.staveIndex < 21) {
     
     CGFloat xPosition;
-    if (kIsIPhone && ![self noteWasAlreadyPlacedOnStaves:self.touchedNote]) {
-      UIScrollView *scrollView = (UIScrollView *)self.containerView;
-      xPosition = self.touchedNote.center.x + scrollView.contentOffset.x;
+    if (![self noteWasAlreadyPlacedOnStaves:self.touchedNote]) {
+      xPosition = self.touchedNote.center.x + [self getContentOffset];
     } else {
       xPosition = self.touchedNote.center.x;
     }
@@ -892,8 +904,15 @@ typedef enum noteMultiplier {
   
   newNote.homePosition = CGPointMake(xPosition, _screenHeight * 4/5);
   newNote.center = newNote.homePosition;
-  
+  CGRect bounds = newNote.bounds;
+  newNote.bounds = CGRectZero;
+  newNote.userInteractionEnabled = NO;
   [self.view addSubview:newNote];
+  [UIView animateWithDuration:kAnimationDuration delay:0.f options:UIViewAnimationOptionCurveEaseOut animations:^{
+    newNote.bounds = bounds;
+  } completion:^(BOOL finished) {
+    newNote.userInteractionEnabled = YES;
+  }];
 }
 
 #pragma mark - note positioning methods
@@ -910,21 +929,23 @@ typedef enum noteMultiplier {
 -(BOOL)decideWhetherToAddTouchedNoteToStaves {
   
     // note is within staves
+  
+  NSLog(@"touched note stave index is %i", self.touchedNote.staveIndex);
   if ([self barForTouchedNote] != NSUIntegerMax) {
     
-    [self centerNote:self.touchedNote];
-    
     if (![self noteWasAlreadyPlacedOnStaves:self.touchedNote]) {
-      self.touchedNote.homePosition = CGPointMake(CGFLOAT_MAX, CGFLOAT_MAX);
       
         // add touched note to array
-      [self.stuffOnStaves addObject:self.touchedNote];
+//      [self.stuffOnStaves addObject:self.touchedNote];
       
         // generate new note for self.view
       [self instantiateNewNoteWithSymbol:self.touchedNote.mySymbol];
     }
     
     [self.stavesView addSubview:self.touchedNote];
+    [self centerNote:self.touchedNote];
+    
+    self.touchedNote.homePosition = CGPointMake(CGFLOAT_MAX, CGFLOAT_MAX);
     
     return YES;
     
@@ -946,6 +967,10 @@ typedef enum noteMultiplier {
 
 -(CGPoint)adjustForTouchOffsetLocationPoint:(CGPoint)locationPoint {
   
+//  if (self.touchedNote.superview == self.stavesView) {
+//    locationPoint = CGPointMake(locationPoint.x, locationPoint.y + self.stavesView.frame.origin.y);
+//  }
+  
   CGPoint touchLocation = locationPoint;
   return CGPointMake(self.touchOffset.dx + touchLocation.x,
                      self.touchOffset.dy + touchLocation.y);
@@ -962,15 +987,14 @@ typedef enum noteMultiplier {
 }
 
 -(NSInteger)staveIndexForNoteCenter:(CGPoint)noteCenter {
-
-  CGFloat yOrigin = 0;
   
-  if ([self noteWasAlreadyPlacedOnStaves:self.touchedNote]) {
+  CGFloat yOrigin;
+  if (kIsIPhone) {
     yOrigin = 0;
   } else {
     yOrigin = _screenHeight / 3 - self.stavesView.frame.size.height / 2;
   }
-  
+
   CGFloat noteCenterRelativeToYOrigin = noteCenter.y - yOrigin;
   NSInteger staveIndex = ((noteCenterRelativeToYOrigin + kStaveHeight * .25f) / (kStaveHeight / 2.f));
 
@@ -979,32 +1003,21 @@ typedef enum noteMultiplier {
 
 -(void)removeFromStavesView {
 
-    // this works in iPhone for now because stavesHeight origin.y is zero
-  
-    // FIXME: this does not work in iPad!
-  
-//  self.touchedNote.homePosition = CGPointZero;
-//  [self.containerView addSubview:self.touchedNote];
+  [self.containerView addSubview:self.touchedNote];
 }
 
 -(CGPoint)getStavesViewLocationForNote:(SymbolView *)note withSelfLocation:(CGPoint)selfLocation {
   
   CGFloat xPosition, yPosition;
   
-  if (kIsIPhone && [self noteWasAlreadyPlacedOnStaves:note]) {
-    UIScrollView *scrollView = (UIScrollView *)self.containerView;
-    xPosition = selfLocation.x + scrollView.contentOffset.x;
+  if ([self noteWasAlreadyPlacedOnStaves:note]) {
+    xPosition = selfLocation.x + [self getContentOffset];
   } else {
     xPosition = selfLocation.x;
   }
-  
-//  if ([self noteWasAlreadyPlacedOnStaves:note]) {
-//    yPosition = selfLocation.y;
-//  } else {
-//    yPosition = selfLocation.y + self.stavesView.frame.origin.y;;
-//  }
 
   yPosition = selfLocation.y;
+  
   return CGPointMake(xPosition, yPosition);
 }
 
@@ -1013,31 +1026,27 @@ typedef enum noteMultiplier {
   
     // already added to stavesView
   if ([self noteWasAlreadyPlacedOnStaves:note]) {
-    
-    CGFloat buffer = 0;
-    if (kIsIPhone) {
-      ContainerScrollView *containerScrollView = (ContainerScrollView *)self.containerView;
-      buffer = containerScrollView.contentOffset.x;
-    }
-    
-    selfPoint = CGPointMake(note.center.x - buffer,
+
+    selfPoint = CGPointMake(note.center.x - [self getContentOffset],
                             [self stavePositionForStaveIndex:note.staveIndex]);
-    
+ 
       // not yet added to stavesView
   } else {
-    
-    CGFloat buffer = 0;
-    if (kIsIPhone) {
-      ContainerScrollView *containerScrollView = (ContainerScrollView *)self.containerView;
-      buffer = containerScrollView.contentOffset.x;
-    }
-    
-    selfPoint = CGPointMake(note.center.x + buffer,
+    selfPoint = CGPointMake(note.center.x + [self getContentOffset],
                             [self stavePositionForStaveIndex:note.staveIndex]);
   }
 
   note.center = [self getStavesViewLocationForNote:note withSelfLocation:selfPoint];
   [note changeStemDirectionIfNecessary];
+}
+
+-(CGFloat)getContentOffset {
+  if (kIsIPhone) {
+    ContainerScrollView *containerScrollView = (ContainerScrollView *)self.containerView;
+    return containerScrollView.contentOffset.x;
+  } else {
+    return 0.f;
+  }
 }
 
 #pragma mark - mail and text methods -------------------------------------------
