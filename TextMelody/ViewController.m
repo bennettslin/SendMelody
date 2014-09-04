@@ -726,7 +726,7 @@ typedef enum noteMultiplier {
     
     if (self.touchedNoteMoved) {
       
-        // check whether to add to staves
+        // check whether to add note to staves
       [self constrictStaveIndex];
       
       [self decideWhetherToAddTouchedNoteToStaves];
