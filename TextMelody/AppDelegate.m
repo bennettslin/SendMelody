@@ -22,7 +22,9 @@
     // path components are of form @["/", key0, m111, k1l1, nono, 01no]
   
   NSArray *pathComponents = [url pathComponents];
+  [[NSUserDefaults standardUserDefaults] removeObjectForKey:kPathComponentsKey];
   [[NSUserDefaults standardUserDefaults] setObject:pathComponents forKey:kPathComponentsKey];
+  [[NSUserDefaults standardUserDefaults] synchronize];
   
   return YES;
 }
@@ -31,9 +33,8 @@
   // Override point for customization after application launch.
   
   if (![[NSUserDefaults standardUserDefaults] objectForKey:kPathComponentsKey]) {
-    
-    NSArray *defaultPathComponents = @[@"/", @"0", @"0111", @"0111", @"0111", @"0111"];
-    [[NSUserDefaults standardUserDefaults] setObject:defaultPathComponents forKey:kPathComponentsKey];
+    [[NSUserDefaults standardUserDefaults] setObject:kDefaultPathComponents forKey:kPathComponentsKey];
+    [[NSUserDefaults standardUserDefaults] synchronize];
   }
   
   return YES;

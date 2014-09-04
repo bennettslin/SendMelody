@@ -12,6 +12,9 @@
 #define kIsIPhone (UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomPhone)
 #define kPathComponentsKey @"pathComponents"
 
+  // four whole note rests
+#define kDefaultPathComponents @[@"0111", @"0111", @"0111", @"0111", @"0111", @"0111"]
+
 #define kFontSonata @"Sonata"
 #define kSymbolFontSize (kStaveHeight * 4)
 #define kSymbolColour [UIColor blackColor]

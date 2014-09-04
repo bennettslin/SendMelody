@@ -86,6 +86,9 @@
     case kHalfNoteRest:
       self.center = CGPointMake(self.center.x, kStaveHeight * 5.5);
       break;
+    case kQuarterNoteRest:
+      self.center = CGPointMake(self.center.x, kStaveHeight * 5.5);
+      break;
     case kBarline:
       self.center = CGPointMake(self.center.x, kStaveHeight * 7.5 + kStaveYAdjust / 2);
       break;

@@ -63,15 +63,17 @@ typedef enum noteMultiplier {
   _screenWidth = [UIScreen mainScreen].bounds.size.height;
   _screenHeight = [UIScreen mainScreen].bounds.size.width;
   
+  self.stuffOnStaves = [NSMutableArray new];
+  
   [self loadFixedViews];
-  [self instantiateStuffOnStaves];
-  [self repositionStuffOnStaves];
   [self instantiateNewNoteWithSymbol:kQuarterNoteStemUp];
   [self instantiateNewNoteWithSymbol:kHalfNoteStemUp];
   [self instantiateNewNoteWithSymbol:kWholeNote];
 
   [self instantiateMessageButtons];
   [self instantiateOtherButtons];
+  
+  [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(instantiateAndPositionStaves) name:UIApplicationDidBecomeActiveNotification object:nil];
 }
 
 -(void)viewWillAppear:(BOOL)animated {
@@ -82,6 +84,11 @@ typedef enum noteMultiplier {
 
   self.textButton.hidden = ![MFMessageComposeViewController canSendText];
   self.textButton.enabled = [MFMessageComposeViewController canSendText];
+}
+
+-(void)instantiateAndPositionStaves {
+  [self repopulateStuffOnStaves];
+  [self repositionStuffOnStaves];
 }
 
 -(void)viewWillDisappear:(BOOL)animated {
@@ -177,81 +184,97 @@ typedef enum noteMultiplier {
   [self.view addSubview:self.startOverButton];
 }
 
--(void)instantiateStuffOnStaves {
+-(void)repopulateStuffOnStaves {
+  
+  [self resetStuffOnStaves];
   
   NSArray *pathComponents = [[NSUserDefaults standardUserDefaults] objectForKey:kPathComponentsKey];
   NSMutableArray *tempWholeStringsArray = [NSMutableArray arrayWithArray:pathComponents];
+  
   [tempWholeStringsArray removeObjectAtIndex:0];
+  [tempWholeStringsArray removeObjectAtIndex:0];
+  
   NSArray *wholeStringsArray = [NSArray arrayWithArray:tempWholeStringsArray];
   
-  self.stuffOnStaves = [NSMutableArray new];
-  
-  for (int i = 0; i < 4; i++) { // count should not be greater than 4
+  if (wholeStringsArray.count == 4) {
     
-    NSString *wholeString = wholeStringsArray[i];
-    
-      // it's a whole note or rest
-    if ([wholeString rangeOfString:@"111"].location == 1) {
+    for (int i = 0; i < 4; i++) { // count should not be greater than 4
       
-        // it's a whole note
-      unichar wholeFirstChar = [wholeString characterAtIndex:0];
-      if (wholeFirstChar != '0') {
-        SymbolView *wholeNote = [[SymbolView alloc] initWithSymbol:kWholeNote];
-        wholeNote.staveIndex = wholeFirstChar - 'a';
-        [self centerNote:wholeNote];
-        [self.stuffOnStaves addObject:wholeNote];
+      NSString *wholeString = wholeStringsArray[i];
+      
+        // it's a whole note or rest
+      if ([wholeString rangeOfString:@"111"].location == 1) {
         
-          // it's a whole rest
-      } else if (wholeFirstChar == '0') {
-        SymbolView *wholeRest = [[SymbolView alloc] initWithSymbol:kWholeNoteRest];
-        [wholeRest centerThisSymbol];
-        [self.stuffOnStaves addObject:wholeRest];
-      }
-      
-        // it's an array of two halves
-    } else {
-      
-      NSMutableArray *arrayOfTwoHalves = [NSMutableArray new];
-      
-      for (int j = 0; j < 2; j++) {
-
-        NSRange halfRange = NSMakeRange(j * 2, 2);
-        NSString *halfString = [wholeString substringWithRange:halfRange];
-        
-          // it's a half note or rest
-        if ([halfString rangeOfString:@"1"].location == 1) {
+          // it's a whole note
+        unichar wholeFirstChar = [wholeString characterAtIndex:0];
+        if ([self isValidNote:wholeFirstChar]) {
+          NSLog(@"instantiate whole note");
           
-            // it's a half note
-          unichar halfFirstChar = [halfString characterAtIndex:0];
-          if (halfFirstChar != '0') {
-            SymbolView *halfNote = [[SymbolView alloc] initWithSymbol:kHalfNoteStemUp];
-            halfNote.staveIndex = halfFirstChar - 'a';
-            [self centerNote:halfNote];
-            [arrayOfTwoHalves addObject:halfNote];
-            
-              // it's a half rest
-          } else if (halfFirstChar == '0') {
-            SymbolView *halfRest = [[SymbolView alloc] initWithSymbol:kHalfNoteRest];
-            [halfRest centerThisSymbol];
-            [arrayOfTwoHalves addObject:halfRest];
-          }
+          SymbolView *wholeNote = [[SymbolView alloc] initWithSymbol:kWholeNote];
+          wholeNote.staveIndex = wholeFirstChar - 'a';
+          [self centerNote:wholeNote];
+          [self.stuffOnStaves addObject:wholeNote];
           
-            // it's an array of two quarters
+            // it's a whole rest
+        } else if (wholeFirstChar == '0') {
+          SymbolView *wholeRest = [[SymbolView alloc] initWithSymbol:kWholeNoteRest];
+          [wholeRest centerThisSymbol];
+          [self.stuffOnStaves addObject:wholeRest];
+          
         } else {
           
-          NSMutableArray *arrayOfTwoQuarters = [NSMutableArray new];
+          NSLog(@"something wrong with whole note at bar %i, reset", i);
+          [self resetToDefaultPathComponentsAndRepopulateStuffOnStaves];
+          return;
+        }
+        
+          // it's an array of two halves
+      } else {
+        
+        NSMutableArray *arrayOfTwoHalves = [NSMutableArray new];
+        
+        for (int j = 0; j < 2; j++) {
+
+          NSRange halfRange = NSMakeRange(j * 2, 2);
+          NSString *halfString = [wholeString substringWithRange:halfRange];
           
-          for (int k = 0; k < 2; k++) {
+            // it's a half note or rest
+          if ([halfString rangeOfString:@"1"].location == 1) {
             
-            NSRange quarterRange = NSMakeRange(k, 1);
-            NSString *quarterString = [wholeString substringWithRange:quarterRange];
-          
-              // it's a quarter note or rest (and technically can't be anything else)
-            if (true) {
+              // it's a half note
+            unichar halfFirstChar = [halfString characterAtIndex:0];
+            if ([self isValidNote:halfFirstChar]) {
+              SymbolView *halfNote = [[SymbolView alloc] initWithSymbol:kHalfNoteStemUp];
+              halfNote.staveIndex = halfFirstChar - 'a';
+              [self centerNote:halfNote];
+              [arrayOfTwoHalves addObject:halfNote];
               
+                // it's a half rest
+            } else if (halfFirstChar == '0') {
+              SymbolView *halfRest = [[SymbolView alloc] initWithSymbol:kHalfNoteRest];
+              [halfRest centerThisSymbol];
+              [arrayOfTwoHalves addObject:halfRest];
+              
+            } else {
+              
+              NSLog(@"something wrong with half note at bar %i, section %i, reset", i, j);
+              [self resetToDefaultPathComponentsAndRepopulateStuffOnStaves];
+              return;
+            }
+            
+              // it's an array of two quarters
+          } else {
+            
+            NSMutableArray *arrayOfTwoQuarters = [NSMutableArray new];
+            
+            for (int k = 0; k < 2; k++) {
+              
+              NSRange quarterRange = NSMakeRange(k, 1);
+              NSString *quarterString = [halfString substringWithRange:quarterRange];
+                
                 // it's a quarter note
               unichar quarterFirstChar = [quarterString characterAtIndex:0];
-              if (quarterFirstChar != '0') {
+              if ([self isValidNote:quarterFirstChar]) {
                 SymbolView *quarterNote = [[SymbolView alloc] initWithSymbol:kQuarterNoteStemUp];
                 quarterNote.staveIndex = quarterFirstChar - 'a';
                 [self centerNote:quarterNote];
@@ -262,30 +285,69 @@ typedef enum noteMultiplier {
                 SymbolView *quarterRest = [[SymbolView alloc] initWithSymbol:kQuarterNoteRest];
                 [quarterRest centerThisSymbol];
                 [arrayOfTwoQuarters addObject:quarterRest];
+                
+              } else {
+
+                NSLog(@"something wrong with quarter note %@ at bar %i, section %i, section %i, reset", quarterString, i, j, k);
+                [self resetToDefaultPathComponentsAndRepopulateStuffOnStaves];
+                return;
               }
             }
+            
+            [arrayOfTwoHalves addObject:arrayOfTwoQuarters];
           }
-          
-          [arrayOfTwoHalves addObject:arrayOfTwoQuarters];
         }
+        
+        [self.stuffOnStaves addObject:arrayOfTwoHalves];
       }
-      
-      [self.stuffOnStaves addObject:arrayOfTwoHalves];
-    }
 
-      // barlines
-    if (i < 3) {
-      SymbolView *barline = [[SymbolView alloc] initWithSymbol:kBarline];
-      [barline centerThisSymbol];
-      [self.stuffOnStaves addObject:barline];
+        // barlines
+      if (i < 3) {
+        SymbolView *barline = [[SymbolView alloc] initWithSymbol:kBarline];
+        [barline centerThisSymbol];
+        [self.stuffOnStaves addObject:barline];
+      }
+    }
+    
+      // is less or more than four components
+  } else {
+    
+    NSLog(@"count is not 4");
+    [self resetToDefaultPathComponentsAndRepopulateStuffOnStaves];
+    return;
+  }
+}
+
+-(BOOL)isValidNote:(unichar)myChar {
+  return (myChar - 'a' >= 4 && myChar - 'a' <= 20);
+}
+
+-(void)resetToDefaultPathComponentsAndRepopulateStuffOnStaves {
+  
+  [[NSUserDefaults standardUserDefaults] removeObjectForKey:kPathComponentsKey];
+  [[NSUserDefaults standardUserDefaults] setObject:kDefaultPathComponents forKey:kPathComponentsKey];
+  [[NSUserDefaults standardUserDefaults] synchronize];
+  [self repopulateStuffOnStaves];
+}
+
+-(void)resetStuffOnStaves {
+    // FIXME: this will get rid of accidentals
+  for (SymbolView *symbol in self.stavesView.subviews) {
+    if (symbol != self.clef && symbol != self.endBarline) {
+      [symbol removeFromSuperview];
     }
   }
+  
+  [self.stuffOnStaves removeAllObjects];
 }
 
 -(void)repositionStuffOnStaves {
   
     // establish very left edge
   CGFloat leftEdge = [self getXPositionForBarline:0];
+  
+    // barline Counter
+  NSUInteger barlineCounter = 0;
   
     // establish range, keeping in mind that we're only using half of endBarline width,
     // since it's actually wider than it seems
@@ -308,7 +370,8 @@ typedef enum noteMultiplier {
           // barline
       } else if (symbol.mySymbol == kBarline) {
         sumValue += kBarlineMultiplier;
-        [self setXPosition:leftEdge + sumValue forBarline:0];
+        barlineCounter++;
+        [self setXPosition:leftEdge + sumValue forBarline:barlineCounter];
       }
       
         // array of two halves
@@ -504,7 +567,9 @@ typedef enum noteMultiplier {
   
     // save to user defaults
   NSArray *pathComponentsArray = [NSArray arrayWithArray:tempPathComponents];
+  [[NSUserDefaults standardUserDefaults] removeObjectForKey:kPathComponentsKey];
   [[NSUserDefaults standardUserDefaults] setObject:pathComponentsArray forKey:kPathComponentsKey];
+  [[NSUserDefaults standardUserDefaults] synchronize];
   
   NSLog(@"final string is %@", finalURLString);
   return finalURLString;
@@ -1085,7 +1150,8 @@ typedef enum noteMultiplier {
 
 -(void)testButtonTapped {
   NSLog(@"stuffOnStaves is %@, count %lu", self.stuffOnStaves, (unsigned long)self.stuffOnStaves.count);
-  
+  NSLog(@"path components %@", [[NSUserDefaults standardUserDefaults] objectForKey:kPathComponentsKey]);
+  NSLog(@"barlineXPositions %@", self.barlineXPositions);
 }
 
 -(void)soundButtonTapped {
@@ -1096,6 +1162,11 @@ typedef enum noteMultiplier {
 -(void)startOverButtonTapped {
   UIActionSheet *actionSheet = [[UIActionSheet alloc] initWithTitle:@"Are you sure? You will lose all changes." delegate:self cancelButtonTitle:@"Cancel" destructiveButtonTitle:@"Okay" otherButtonTitles:nil, nil];
   [actionSheet showInView:self.view];
+}
+
+-(void)actionSheet:(UIActionSheet *)actionSheet clickedButtonAtIndex:(NSInteger)buttonIndex {
+  [self resetToDefaultPathComponentsAndRepopulateStuffOnStaves];
+  [self repositionStuffOnStaves];
 }
 
 #pragma mark - image methods ---------------------------------------------------
