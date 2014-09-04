@@ -25,6 +25,8 @@
 -(void)beginTouch;
 -(void)endTouch;
 
+-(void)discard;
+
 -(void)changeStemDirectionIfNecessary;
 -(void)sendHomeToRack;
 

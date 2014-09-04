@@ -214,6 +214,15 @@
   [self repositionTouchSubview];
 }
 
+-(void)discard {
+  self.userInteractionEnabled = NO;
+  [UIView animateWithDuration:kAnimationDuration delay:0.f options:UIViewAnimationOptionCurveEaseIn animations:^{
+    self.bounds = CGRectZero;
+  } completion:^(BOOL finished) {
+    [self removeFromSuperview];
+  }];
+}
+
 -(void)sendHomeToRack {
   if (self.mySymbol == kQuarterNoteStemDown) {
     [self modifyGivenSymbol:kQuarterNoteStemUp];
@@ -224,7 +233,7 @@
   }
   
   self.userInteractionEnabled = NO;
-  [UIView animateWithDuration:kAnimationDuration animations:^{
+  [UIView animateWithDuration:kAnimationDuration delay:0.f options:UIViewAnimationOptionCurveEaseOut animations:^{
     self.center = self.homePosition;
   } completion:^(BOOL finished) {
     self.userInteractionEnabled = YES;

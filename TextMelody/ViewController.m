@@ -73,6 +73,8 @@ typedef enum noteMultiplier {
   [self instantiateNewNoteWithSymbol:kWholeNote];
   
   [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(instantiateAndPositionStaves) name:UIApplicationDidBecomeActiveNotification object:nil];
+
+  [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(createURLStringFromStuffOnStavesAndSave) name:UIApplicationDidEnterBackgroundNotification object:nil];
 }
 
 -(void)viewWillAppear:(BOOL)animated {
@@ -459,6 +461,8 @@ typedef enum noteMultiplier {
 
 -(NSString *)createURLStringFromStuffOnStavesAndSave {
   
+  NSLog(@"did enter background");
+  
     // each path component is four characters long
   
     // letter code is 'a' + staveIndex
@@ -466,9 +470,12 @@ typedef enum noteMultiplier {
     // 1 means it's a continuation of the previous note
   
   NSMutableArray *tempPathComponents = [NSMutableArray new];
+  NSString *initialSlash = @"/";
+  [tempPathComponents addObject:initialSlash];
   
     // hard code key signature as 0 for now
-  NSString *initialKey = @"/key0";
+  NSString *initialKey = @"key0";
+  
   [tempPathComponents addObject:initialKey];
   
     // get elements of each bar
@@ -555,6 +562,9 @@ typedef enum noteMultiplier {
   
     // save to user defaults
   NSArray *pathComponentsArray = [NSArray arrayWithArray:tempPathComponents];
+  
+  NSLog(@"array being saved is %@", pathComponentsArray);
+  
   [[NSUserDefaults standardUserDefaults] removeObjectForKey:kPathComponentsKey];
   [[NSUserDefaults standardUserDefaults] setObject:pathComponentsArray forKey:kPathComponentsKey];
   [[NSUserDefaults standardUserDefaults] synchronize];
@@ -886,12 +896,6 @@ typedef enum noteMultiplier {
   [self.view addSubview:newNote];
 }
 
--(void)discardNote:(SymbolView *)note {
-  
-    // FIXME: this will eventually be animated
-  [note removeFromSuperview];
-}
-
 #pragma mark - note positioning methods
 
 -(void)constrictStaveIndex {
@@ -929,7 +933,7 @@ typedef enum noteMultiplier {
     
       // if note already belongs on staves, discard
     if ([self noteWasAlreadyPlacedOnStaves:self.touchedNote]) {
-      [self discardNote:self.touchedNote];
+      [self.touchedNote discard];
       
         // else send it home to rack
     } else {
@@ -1138,7 +1142,7 @@ typedef enum noteMultiplier {
 }
 
 -(void)startOverButtonTapped {
-  UIActionSheet *actionSheet = [[UIActionSheet alloc] initWithTitle:@"Are you sure? You will lose all changes." delegate:self cancelButtonTitle:@"Cancel" destructiveButtonTitle:@"Okay" otherButtonTitles:nil, nil];
+  UIActionSheet *actionSheet = [[UIActionSheet alloc] initWithTitle:@"Are you sure? You will lose all current progress." delegate:self cancelButtonTitle:@"Cancel" destructiveButtonTitle:@"Okay" otherButtonTitles:nil, nil];
   [actionSheet showInView:self.view];
 }
 
