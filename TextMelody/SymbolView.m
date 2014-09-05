@@ -38,6 +38,7 @@
     if ([self determineIfTouchableWithSymbol:symbol]) {
       
       self.homePosition = CGPointMake(CGFLOAT_MAX, CGFLOAT_MAX);
+      self.currentBar = NSUIntegerMax;
       
       self.userInteractionEnabled = YES;
       [self modifyGivenSymbol:symbol]; // must be between these two

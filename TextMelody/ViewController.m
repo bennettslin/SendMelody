@@ -399,6 +399,8 @@ typedef enum noteMultiplier {
         [self setXPosition:symbol.center.x forBarline:barlineCounter];
       }
       
+      symbol.currentBar = [self barForNote:symbol];
+      
         // array of two halves
     } else if ([currentObject isKindOfClass:NSArray.class]) {
       NSArray *twoHalvesArray = (NSArray *)currentObject;
@@ -631,6 +633,11 @@ typedef enum noteMultiplier {
       
       [self.touchedNote beginTouch];
       
+      if (!self.temporaryObject) {
+        [self makeTemporaryObjectARest];
+      }
+      [self repositionTemporaryRest];
+      
       if ([self noteWasAlreadyPlacedOnStaves:self.touchedNote]) {
         [self removeFromStavesView];
 
@@ -672,7 +679,9 @@ typedef enum noteMultiplier {
     [self.touchedNote changeStemDirectionIfNecessary];
     
       // if within staves, handle how to rearrange stuffOnStaves array
-    NSUInteger barForTouchedNote = [self barForTouchedNote];
+    NSUInteger barForTouchedNote = [self barForNote:self.touchedNote];
+    
+    NSLog(@"touched note current bar is %i, barForTouchedNote is %i", self.touchedNote.currentBar, barForTouchedNote);
     
     if (barForTouchedNote != NSUIntegerMax) {
       
@@ -749,7 +758,7 @@ typedef enum noteMultiplier {
     [self.touchedNote modifyLedgersGivenStaveIndex];
     
     [self repositionStuffOnStaves];
-    
+
     [self makeTemporaryObjectARest];
     self.touchedNote = nil;
   }
@@ -775,15 +784,15 @@ typedef enum noteMultiplier {
   }
 }
 
--(NSUInteger)barForTouchedNote {
+-(NSUInteger)barForNote:(SymbolView *)note {
     // touched note is within staves yPosition
-  if (self.touchedNote.staveIndex > 3 && self.touchedNote.staveIndex < 21) {
+  if (note.staveIndex > 3 && note.staveIndex < 21) {
     
     CGFloat xPosition;
-    if (![self noteWasAlreadyPlacedOnStaves:self.touchedNote]) {
-      xPosition = self.touchedNote.center.x + [self getContentOffset];
+    if (![self noteWasAlreadyPlacedOnStaves:note]) {
+      xPosition = note.center.x + [self getContentOffset];
     } else {
-      xPosition = self.touchedNote.center.x;
+      xPosition = note.center.x;
     }
     
     for (NSUInteger index = 0; index < 4; index++) {
@@ -802,9 +811,8 @@ typedef enum noteMultiplier {
   if (putNoteOnStaves && ![self.stuffOnStaves containsObject:note]) {
     
     id element = [self getElementInBar:bar];
+    
     if (element != note) {
-      
-      NSLog(@"add note to staves");
       
       note.currentBar = bar;
       NSUInteger elementIndex = [self.stuffOnStaves indexOfObject:element];
@@ -816,34 +824,21 @@ typedef enum noteMultiplier {
 
       // remove note from staves, place temporaryObject back
   } else if (!putNoteOnStaves && [self.stuffOnStaves containsObject:note]) {
-    
-    NSLog(@"remove note from staves");
-    
-    if (!self.temporaryObject) {
-      if (note.noteDuration == 4) {
-        self.temporaryObject = [self instantiateNewNoteWithSymbol:kWholeNoteRest];
-      } else if (note.noteDuration == 2) {
-        self.temporaryObject = [self instantiateNewNoteWithSymbol:kHalfNoteRest];
-      } else if (note.noteDuration == 1) {
-        self.temporaryObject = [self instantiateNewNoteWithSymbol:kQuarterNoteRest];
-      }
-    }
-    
-    if ([self.temporaryObject isKindOfClass:SymbolView.class]) {
-      [self.temporaryObject centerThisSymbol];
-    }
-    
+
     note.currentBar = NSUIntegerMax;
     NSUInteger noteIndex = [self.stuffOnStaves indexOfObject:note];
     [self.stuffOnStaves insertObject:self.temporaryObject atIndex:noteIndex];
     [self.stuffOnStaves removeObject:note];
     [self object:self.temporaryObject removeFromView:NO];
     self.temporaryObject = nil;
-    
   }
 }
 
 -(void)makeTemporaryObjectARest {
+  
+  if ([self.temporaryObject isKindOfClass:SymbolView.class]) {
+    [self.temporaryObject removeFromSuperview];
+  }
   
   self.temporaryObject = nil;
   
@@ -855,6 +850,10 @@ typedef enum noteMultiplier {
     self.temporaryObject = [self instantiateNewNoteWithSymbol:kQuarterNoteRest];
   }
   
+  [self repositionTemporaryRest];
+}
+
+-(void)repositionTemporaryRest {
   if ([self.temporaryObject isKindOfClass:SymbolView.class]) {
     SymbolView *tempSymbol = (SymbolView *)self.temporaryObject;
     [tempSymbol centerThisSymbol];
@@ -962,7 +961,7 @@ typedef enum noteMultiplier {
     // note is within staves
   
   NSLog(@"touched note stave index is %i", self.touchedNote.staveIndex);
-  if ([self barForTouchedNote] != NSUIntegerMax) {
+  if ([self barForNote:self.touchedNote] != NSUIntegerMax) {
     
     if (![self noteWasAlreadyPlacedOnStaves:self.touchedNote]) {
       
