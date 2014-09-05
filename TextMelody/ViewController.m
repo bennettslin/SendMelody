@@ -414,6 +414,8 @@ typedef enum noteMultiplier {
           SymbolView *symbol = (SymbolView *)currentHalfObject;
           leftEdge = [self xCenterNote:symbol fromLeftEdge:leftEdge withWidthUnit:widthUnit];
           
+          symbol.currentBar = [self barForNote:symbol];
+          
             // this half is an array of two quarters
         } else if ([currentHalfObject isKindOfClass:NSArray.class]) {
           NSArray *twoQuartersArray = (NSArray *)currentHalfObject;
@@ -425,6 +427,8 @@ typedef enum noteMultiplier {
 
               SymbolView *symbol = (SymbolView *)currentQuarterObject;
               leftEdge = [self xCenterNote:symbol fromLeftEdge:leftEdge withWidthUnit:widthUnit];
+              
+              symbol.currentBar = [self barForNote:symbol];
               
             }
           }
@@ -453,7 +457,8 @@ typedef enum noteMultiplier {
   }
   
   CGFloat noteXRange = widthUnit * multiplier;
-  note.center = CGPointMake(leftEdge + noteXRange / 2, note.center.y);
+  
+  [self animateNote:note toPoint:CGPointMake(leftEdge + noteXRange / 2, note.center.y)];
 
   if (!note.superview) {
     [self.stavesView addSubview:note];
@@ -681,14 +686,12 @@ typedef enum noteMultiplier {
       // if within staves, handle how to rearrange stuffOnStaves array
     NSUInteger barForTouchedNote = [self barForNote:self.touchedNote];
     
-    NSLog(@"touched note current bar is %i, barForTouchedNote is %i", self.touchedNote.currentBar, barForTouchedNote);
+//    NSLog(@"touched note current bar is %i, barForTouchedNote is %i", self.touchedNote.currentBar, barForTouchedNote);
     
     if (barForTouchedNote != NSUIntegerMax) {
       
         // A. handle whole note
       if (self.touchedNote.mySymbol == kWholeNote) {
-        
-          // 1. one whole
         
           // note added to staves from rack
         if (self.touchedNote.currentBar == NSUIntegerMax) {
@@ -700,14 +703,6 @@ typedef enum noteMultiplier {
           [self swapNote:self.touchedNote withElementInBar:barForTouchedNote putNoteOnStaves:YES];
         }
 
-        
-          // 2. two halves
-        
-          // 3. one half, two quarters
-        
-          // 4. four quarters
-        
-          // B. handle half note
       } else if (self.touchedNote.mySymbol == kHalfNoteStemUp ||
                  self.touchedNote.mySymbol == kHalfNoteStemDown) {
 
@@ -1004,6 +999,16 @@ typedef enum noteMultiplier {
   CGPoint touchLocation = locationPoint;
   return CGPointMake(self.touchOffset.dx + touchLocation.x,
                      self.touchOffset.dy + touchLocation.y);
+}
+
+-(void)animateNote:(SymbolView *)note toPoint:(CGPoint)point {
+  
+  note.userInteractionEnabled = NO;
+  [UIView animateWithDuration:kAnimationDuration delay:0.f options:UIViewAnimationOptionCurveEaseInOut animations:^{
+    note.center = point;
+  } completion:^(BOOL finished) {
+    note.userInteractionEnabled = YES;
+  }];
 }
 
 #pragma mark - touched note helper methods -------------------------------------

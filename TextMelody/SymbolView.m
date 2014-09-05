@@ -35,10 +35,12 @@
     self.font = [UIFont fontWithName:kFontSonata size:kSymbolFontSize];
     self.textAlignment = NSTextAlignmentCenter;
     self.textColor = kSymbolColour;
+  
     if ([self determineIfTouchableWithSymbol:symbol]) {
       
       self.homePosition = CGPointMake(CGFLOAT_MAX, CGFLOAT_MAX);
       self.currentBar = NSUIntegerMax;
+      self.staveIndex = NSIntegerMax;
       
       self.userInteractionEnabled = YES;
       [self modifyGivenSymbol:symbol]; // must be between these two
@@ -80,22 +82,30 @@
 }
 
 -(void)centerThisSymbol {
+  
+  CGPoint center;
+  
   switch (self.mySymbol) {
     case kWholeNoteRest:
-      self.center = CGPointMake(self.center.x, kStaveHeight * 5);
+      center = CGPointMake(self.center.x, kStaveHeight * 5);
       break;
     case kHalfNoteRest:
-      self.center = CGPointMake(self.center.x, kStaveHeight * 5.5);
+      center = CGPointMake(self.center.x, kStaveHeight * 5.5);
       break;
     case kQuarterNoteRest:
-      self.center = CGPointMake(self.center.x, kStaveHeight * 5.5);
+      center = CGPointMake(self.center.x, kStaveHeight * 5.5);
       break;
     case kBarline:
-      self.center = CGPointMake(self.center.x, kStaveHeight * 7.5 + kStaveYAdjust / 2);
+      center = CGPointMake(self.center.x, kStaveHeight * 7.5 + kStaveYAdjust / 2);
       break;
     default:
       break;
   }
+  
+  [UIView animateWithDuration:kAnimationDuration delay:0.f options:UIViewAnimationOptionCurveEaseInOut animations:^{
+    self.center = center;
+  } completion:^(BOOL finished) {
+  }];
 }
 
 -(void)modifyLedgersGivenStaveIndex {
