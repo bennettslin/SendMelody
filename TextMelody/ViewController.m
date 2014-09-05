@@ -43,6 +43,7 @@ typedef enum noteMultiplier {
 @property (weak, nonatomic) IBOutlet UIButton *startOverButton;
 
 @property (strong, nonatomic) NSMutableDictionary *barlineXPositions;
+@property (strong, nonatomic) NSMutableDictionary *halfBarlineXPositions;
 @property (strong, nonatomic) id temporaryObject;
 
 @end
@@ -60,7 +61,10 @@ typedef enum noteMultiplier {
 
   self.barlineXPositions = [[NSMutableDictionary alloc] initWithObjects:@[@0.f, @0.f, @0.f, @0.f, @0.f]
                                                                 forKeys:@[@0, @1, @2, @3, @4]];
-                            
+
+  self.halfBarlineXPositions = [[NSMutableDictionary alloc] initWithObjects:@[@0.f, @0.f, @0.f, @0.f]
+                                                                forKeys:@[@0, @1, @2, @3]];
+  
   _screenWidth = [UIScreen mainScreen].bounds.size.height;
   _screenHeight = [UIScreen mainScreen].bounds.size.width;
   
@@ -385,6 +389,11 @@ typedef enum noteMultiplier {
     // barline Counter
   NSUInteger barlineCounter = 0;
   
+    // reset halfBarlineXPositions
+  for (int i = 0; i < self.halfBarlineXPositions.count; i++) {
+    [self setXPosition:0.f forHalfBarline:i];
+  }
+  
   for (int i = 0; i < self.stuffOnStaves.count; i++) {
     
       // whole note or rest
@@ -433,6 +442,8 @@ typedef enum noteMultiplier {
             }
           }
         }
+        
+        (j == 0) ? [self setXPosition:leftEdge forHalfBarline:barlineCounter] : nil;
       }
     }
   }
@@ -779,6 +790,23 @@ typedef enum noteMultiplier {
   }
 }
 
+-(void)setXPosition:(CGFloat)xPosition forHalfBarline:(NSUInteger)key {
+  
+  if (key <= 3) {
+    [self.halfBarlineXPositions removeObjectForKey:@(key)];
+    [self.halfBarlineXPositions setObject:@(xPosition) forKey:@(key)];
+  }
+}
+
+-(CGFloat)getXPositionForHalfBarline:(NSUInteger)key {
+  
+  if (key <= 3) {
+    return [[self.halfBarlineXPositions objectForKey:@(key)] floatValue];
+  } else {
+    return CGFLOAT_MAX;
+  }
+}
+
 -(NSUInteger)barForNote:(SymbolView *)note {
     // touched note is within staves yPosition
   if (note.staveIndex > 3 && note.staveIndex < 21) {
@@ -877,25 +905,58 @@ typedef enum noteMultiplier {
   }
 }
 
-/*
+-(NSUInteger)sectionForHalfNote:(SymbolView *)note inBar:(NSUInteger)barNumber {
+  
+  CGFloat noteX = note.center.x - [self getXPositionForBarline:barNumber];
+  CGFloat range = [self getXPositionForBarline:barNumber + 1] - [self getXPositionForBarline:barNumber];
+  
+  id element = [self getElementInBar:barNumber];
+  
+    // element is whole note or rest
+  if ([element isKindOfClass:SymbolView.class]) {
+    
+    SymbolView *symbol = (SymbolView *)element;
+    
+  } else if ([element isKindOfClass:NSArray.class]) {
+    
+    NSArray *arrayOfTwoHalves = (NSArray *)element;
+    
+    
+    for (int i = 0; i < 2; i++) {
+      
+      id halfElement = arrayOfTwoHalves[i];
+      
+      if ([halfElement isKindOfClass:SymbolView.class]) {
+        
+        SymbolView *halfSymbol = (SymbolView *)halfElement;
+        
+      } else if ([halfElement isKindOfClass:NSArray.class]) {
+        
+      }
 
-
--(NSUInteger)sectionForTouchedNoteInBar:(NSUInteger)barNumber withElementCount:(NSUInteger)count {
+    } 
+    
+  }
   
-  CGFloat leftBarlineXPosition = [self getXPositionForBarline:barNumber];
-  CGFloat rightBarlineXPosition = [self getXPositionForBarline:barNumber + 1];
-  CGFloat barLength = rightBarlineXPosition - leftBarlineXPosition;
-  CGFloat barSectionLength = barLength / count;
   
-  CGFloat touchedNoteXPositionWithinBar = self.touchedNote.center.x - leftBarlineXPosition;
   
-  NSUInteger section = (NSUInteger)(touchedNoteXPositionWithinBar / barSectionLength);
-  return section;
+  
+  
+  
+  
+  
+//  CGFloat leftBarlineXPosition = [self getXPositionForBarline:barNumber];
+//  CGFloat rightBarlineXPosition = [self getXPositionForBarline:barNumber + 1];
+//  CGFloat barLength = rightBarlineXPosition - leftBarlineXPosition;
+//  CGFloat barSectionLength = barLength / count;
+//  
+//  CGFloat touchedNoteXPositionWithinBar = self.touchedNote.center.x - leftBarlineXPosition;
+//  
+//  NSUInteger section = (NSUInteger)(touchedNoteXPositionWithinBar / barSectionLength);
+//  return section;
+  
+  return 0;
 }
-
-*/
-
-
 
 #pragma mark - note state change methods
 
@@ -1183,6 +1244,7 @@ typedef enum noteMultiplier {
   NSLog(@"stuffOnStaves is %@, count %lu", self.stuffOnStaves, (unsigned long)self.stuffOnStaves.count);
   NSLog(@"path components %@", [[NSUserDefaults standardUserDefaults] objectForKey:kPathComponentsKey]);
   NSLog(@"barlineXPositions %@", self.barlineXPositions);
+  NSLog(@"halfBarlineXPositions %@", self.halfBarlineXPositions);
 }
 
 -(void)startOverButtonTapped {

@@ -247,10 +247,11 @@
   [UIView animateWithDuration:kAnimationDuration delay:0.f options:UIViewAnimationOptionCurveEaseOut animations:^{
     self.center = self.homePosition;
   } completion:^(BOOL finished) {
+    self.staveIndex = NSIntegerMax;
     self.userInteractionEnabled = YES;
+    [self modifyLedgersGivenStaveIndex];
+    [self repositionTouchSubview];
   }];
-  
-  [self repositionTouchSubview];
 }
 
 #pragma mark - helper methods
