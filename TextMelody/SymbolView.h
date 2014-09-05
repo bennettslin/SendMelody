@@ -18,6 +18,8 @@
 @property (nonatomic) CGPoint homePosition;
 @property (nonatomic) BOOL onStaves;
 
+@property (nonatomic) NSUInteger currentBar;
+
 -(instancetype)initWithSymbol:(MusicSymbol)symbol;
 -(void)modifyGivenSymbol:(MusicSymbol)symbol;
 -(void)centerThisSymbol;

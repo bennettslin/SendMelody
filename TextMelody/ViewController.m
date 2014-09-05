@@ -34,7 +34,6 @@ typedef enum noteMultiplier {
 @property (strong, nonatomic) NSMutableArray *stuffOnStaves;
 
 @property (nonatomic) CGVector touchOffset;
-//@property (nonatomic) BOOL touchedNoteMoved;
 
 @property (weak, nonatomic) IBOutlet UIButton *mailButton;
 @property (weak, nonatomic) IBOutlet UIButton *textButton;
@@ -53,12 +52,12 @@ typedef enum noteMultiplier {
   CGFloat _screenHeight;
   CGFloat _keySigWidth;
 }
-            
+
 -(void)viewDidLoad {
   [super viewDidLoad];
-  
+
   self.view.backgroundColor = kBackgroundColour;
-  
+
   self.barlineXPositions = [[NSMutableDictionary alloc] initWithObjects:@[@0.f, @0.f, @0.f, @0.f, @0.f]
                                                                 forKeys:@[@0, @1, @2, @3, @4]];
                             
@@ -91,14 +90,8 @@ typedef enum noteMultiplier {
   [self instantiateOtherButtons];
 }
 
--(void)instantiateAndPositionStaves {
-  [self repopulateStuffOnStaves];
-  [self repositionStuffOnStaves];
-}
-
 -(void)viewWillDisappear:(BOOL)animated {
   self.touchedNote = nil;
-//  self.touchedNoteMoved = NO;
 }
 
 -(void)loadFixedViews {
@@ -177,6 +170,13 @@ typedef enum noteMultiplier {
   self.startOverButton.layer.cornerRadius = kButtonLength / 4;
   self.startOverButton.clipsToBounds = YES;
   [self.view addSubview:self.startOverButton];
+}
+
+#pragma mark - staves methods
+
+-(void)instantiateAndPositionStaves {
+  [self repopulateStuffOnStaves];
+  [self repositionStuffOnStaves];
 }
 
 -(void)repopulateStuffOnStaves {
@@ -336,9 +336,6 @@ typedef enum noteMultiplier {
     // establish very left edge
   CGFloat leftEdge = [self getXPositionForBarline:0];
   
-    // barline Counter
-  NSUInteger barlineCounter = 0;
-  
     // establish range, keeping in mind that we're only using half of endBarline width,
     // since it's actually wider than it seems
   CGFloat range = kStaveWidth - leftEdge - self.endBarline.frame.size.width / 2 - kStaveWidthMargin;
@@ -360,8 +357,6 @@ typedef enum noteMultiplier {
           // barline
       } else if (symbol.mySymbol == kBarline) {
         sumValue += kBarlineMultiplier;
-        barlineCounter++;
-        [self setXPosition:leftEdge + sumValue forBarline:barlineCounter];
       }
       
         // array of two halves
@@ -387,6 +382,9 @@ typedef enum noteMultiplier {
     // widthUnit is multiplied by the noteDuration's inherent value
     // so whole notes are 16 width units, half notes are 12 width units, and quarter notes 9 width units
   
+    // barline Counter
+  NSUInteger barlineCounter = 0;
+  
   for (int i = 0; i < self.stuffOnStaves.count; i++) {
     
       // whole note or rest
@@ -395,6 +393,11 @@ typedef enum noteMultiplier {
       
       SymbolView *symbol = (SymbolView *)currentObject;
       leftEdge = [self xCenterNote:symbol fromLeftEdge:leftEdge withWidthUnit:widthUnit];
+      
+      if (symbol.mySymbol == kBarline) {
+        barlineCounter++;
+        [self setXPosition:symbol.center.x forBarline:barlineCounter];
+      }
       
         // array of two halves
     } else if ([currentObject isKindOfClass:NSArray.class]) {
@@ -589,11 +592,11 @@ typedef enum noteMultiplier {
       // get next object after barline
     if (currentBarline == barNumber) {
       
-        // ensures that this method does not return a barline
-      
         // it's a note
       if ([element isKindOfClass:SymbolView.class]) {
         SymbolView *symbol = (SymbolView *)element;
+        
+          // ensures that this method never returns a barline
         if (symbol.mySymbol != kBarline) {
           return element;
         }
@@ -616,6 +619,12 @@ typedef enum noteMultiplier {
   UIView *touchedView = [self.view hitTest:touchPoint withEvent:event];
   
   if ([touchedView.superview isKindOfClass:SymbolView.class]) {
+    
+    if (kIsIPhone) {
+      UIScrollView *scrollView = (UIScrollView *)self.containerView;
+      [scrollView setScrollEnabled:NO];
+    }
+    
     if (!self.touchedNote) {
       
       self.touchedNote = (SymbolView *)touchedView.superview;
@@ -639,7 +648,6 @@ typedef enum noteMultiplier {
         
         self.touchOffset = CGVectorMake(self.touchedNote.center.x - realPoint.x,
                                         self.touchedNote.center.y - realPoint.y);
-        
       }
     }
     [self.touchedNote modifyLedgersGivenStaveIndex];
@@ -649,13 +657,10 @@ typedef enum noteMultiplier {
 -(void)touchesMoved:(NSSet *)touches withEvent:(UIEvent *)event {
   
   if (self.touchedNote) {
-//    self.touchedNoteMoved = YES;
     
       // recenter
     CGPoint touchPoint = [[touches anyObject] locationInView:self.view];
     CGPoint noteCenter = [self adjustForTouchOffsetLocationPoint:touchPoint];
-    
-    NSLog(@"touch offset is %.2f, %.2f", self.touchOffset.dx, self.touchOffset.dy);
     
     CGPoint realCenter = [self getStavesViewLocationForNote:self.touchedNote withSelfLocation:noteCenter];
     self.touchedNote.center = realCenter;
@@ -666,21 +671,26 @@ typedef enum noteMultiplier {
     [self.touchedNote modifyLedgersGivenStaveIndex];
     [self.touchedNote changeStemDirectionIfNecessary];
     
-    /*
-    
       // if within staves, handle how to rearrange stuffOnStaves array
     NSUInteger barForTouchedNote = [self barForTouchedNote];
+    
     if (barForTouchedNote != NSUIntegerMax) {
-      
-      NSArray *elementsInBar = [self getElementsInBar:barForTouchedNote];
-      NSUInteger barSection = [self sectionForTouchedNoteInBar:barForTouchedNote
-                                              withElementCount:elementsInBar.count];
       
         // A. handle whole note
       if (self.touchedNote.mySymbol == kWholeNote) {
-        [self hideOrShowElements:elementsInBar hide:YES];
         
           // 1. one whole
+        
+          // note added to staves from rack
+        if (self.touchedNote.currentBar == NSUIntegerMax) {
+          [self swapNote:self.touchedNote withElementInBar:barForTouchedNote putNoteOnStaves:YES];
+          
+            // note moved to bar from other bar
+        } else if (self.touchedNote.currentBar != barForTouchedNote) {
+          [self swapNote:self.touchedNote withElementInBar:NSUIntegerMax putNoteOnStaves:NO];
+          [self swapNote:self.touchedNote withElementInBar:barForTouchedNote putNoteOnStaves:YES];
+        }
+
         
           // 2. two halves
         
@@ -713,12 +723,20 @@ typedef enum noteMultiplier {
           // 4. four quarters
         
       }
+      
+        // note is not in any bar
+    } else {
+      [self swapNote:self.touchedNote withElementInBar:NSUIntegerMax putNoteOnStaves:NO];
     }
-     */
   }
 }
 
 -(void)touchesEnded:(NSSet *)touches withEvent:(UIEvent *)event {
+  
+  if (kIsIPhone) {
+    UIScrollView *scrollView = (UIScrollView *)self.containerView;
+    [scrollView setScrollEnabled:NO];
+  }
   
   if (self.touchedNote) {
     
@@ -730,6 +748,9 @@ typedef enum noteMultiplier {
     
     [self.touchedNote modifyLedgersGivenStaveIndex];
     
+    [self repositionStuffOnStaves];
+    
+    [self makeTemporaryObjectARest];
     self.touchedNote = nil;
   }
 }
@@ -737,6 +758,9 @@ typedef enum noteMultiplier {
 #pragma mark - note to staves helper methods -----------------------------------
 
 -(void)setXPosition:(CGFloat)xPosition forBarline:(NSUInteger)key {
+  
+  NSLog(@"xPositon set");
+  
   if (key <= 4) {
     [self.barlineXPositions removeObjectForKey:@(key)];
     [self.barlineXPositions setObject:@(xPosition) forKey:@(key)];
@@ -772,6 +796,93 @@ typedef enum noteMultiplier {
   return NSUIntegerMax;
 }
 
+-(void)swapNote:(SymbolView *)note withElementInBar:(NSUInteger)bar putNoteOnStaves:(BOOL)putNoteOnStaves {
+  
+    // put note on staves, place element in temporaryObject
+  if (putNoteOnStaves && ![self.stuffOnStaves containsObject:note]) {
+    
+    id element = [self getElementInBar:bar];
+    if (element != note) {
+      
+      NSLog(@"add note to staves");
+      
+      note.currentBar = bar;
+      NSUInteger elementIndex = [self.stuffOnStaves indexOfObject:element];
+      [self.stuffOnStaves insertObject:note atIndex:elementIndex];
+      [self.stuffOnStaves removeObject:element];
+      [self object:element removeFromView:YES];
+      self.temporaryObject = element;
+    }
+
+      // remove note from staves, place temporaryObject back
+  } else if (!putNoteOnStaves && [self.stuffOnStaves containsObject:note]) {
+    
+    NSLog(@"remove note from staves");
+    
+    if (!self.temporaryObject) {
+      if (note.noteDuration == 4) {
+        self.temporaryObject = [self instantiateNewNoteWithSymbol:kWholeNoteRest];
+      } else if (note.noteDuration == 2) {
+        self.temporaryObject = [self instantiateNewNoteWithSymbol:kHalfNoteRest];
+      } else if (note.noteDuration == 1) {
+        self.temporaryObject = [self instantiateNewNoteWithSymbol:kQuarterNoteRest];
+      }
+    }
+    
+    if ([self.temporaryObject isKindOfClass:SymbolView.class]) {
+      [self.temporaryObject centerThisSymbol];
+    }
+    
+    note.currentBar = NSUIntegerMax;
+    NSUInteger noteIndex = [self.stuffOnStaves indexOfObject:note];
+    [self.stuffOnStaves insertObject:self.temporaryObject atIndex:noteIndex];
+    [self.stuffOnStaves removeObject:note];
+    [self object:self.temporaryObject removeFromView:NO];
+    self.temporaryObject = nil;
+    
+  }
+}
+
+-(void)makeTemporaryObjectARest {
+  
+  self.temporaryObject = nil;
+  
+  if (self.touchedNote.noteDuration == 4) {
+    self.temporaryObject = [self instantiateNewNoteWithSymbol:kWholeNoteRest];
+  } else if (self.touchedNote.noteDuration == 2) {
+    self.temporaryObject = [self instantiateNewNoteWithSymbol:kHalfNoteRest];
+  } else if (self.touchedNote.noteDuration == 1) {
+    self.temporaryObject = [self instantiateNewNoteWithSymbol:kQuarterNoteRest];
+  }
+  
+  if ([self.temporaryObject isKindOfClass:SymbolView.class]) {
+    SymbolView *tempSymbol = (SymbolView *)self.temporaryObject;
+    [tempSymbol centerThisSymbol];
+    [tempSymbol removeFromSuperview];
+    tempSymbol.center = CGPointMake(self.touchedNote.center.x, tempSymbol.center.y);
+  }
+}
+
+-(void)object:(id)object removeFromView:(BOOL)toRemove {
+  
+  if ([object isKindOfClass:SymbolView.class]) {
+    SymbolView *symbol = (SymbolView *)object;
+    
+    if (toRemove) {
+      [symbol removeFromSuperview];
+    } else {
+      [self.stavesView addSubview:symbol];
+    }
+    
+  } else if ([object isKindOfClass:NSArray.class]) {
+    NSArray *array = (NSArray *)object;
+    
+    for (SymbolView *symbol in array) {
+      [self object:symbol removeFromView:toRemove];
+    }
+  }
+}
+
 /*
 
 
@@ -790,90 +901,11 @@ typedef enum noteMultiplier {
 
 */
 
-#pragma mark - keySig methods
 
--(void)updateKeySigLabel {
-
-    // sharps are 0-5, flats are 6-11
-  MusicSymbol symbol = (self.keySigIndex < 6) ? kSharp : kFlat;
-  CGFloat accidentalWidth = 0;
-  
-  for (int i = 0; i < 6; i++) {
-    SymbolView *accidental = self.keySigAccidentals[i];
-    if ((symbol == kSharp && i < self.keySigIndex) ||
-        (symbol == kFlat && i <= (self.keySigIndex - 6))) {
-       
-      accidental.hidden = NO;
-      [accidental modifyGivenSymbol:symbol];
-      CGFloat factor = [self stavePositionForAccidentalIndex:i];
-      accidental.center = CGPointMake(kStaveWidthMargin + self.clef.frame.size.width + ((i + 0.5) * accidental.frame.size.width), kStaveHeight * (factor / 2 + 3.5 + kStaveYAdjust));
-      
-      if (accidentalWidth == 0) {
-        accidentalWidth = accidental.frame.size.width;
-      }
-      
-    } else {
-      accidental.hidden = YES;
-    }
-  }
-  
-  _keySigWidth = (self.keySigIndex < 6 ? self.keySigIndex : (self.keySigIndex % 6) + 1) * accidentalWidth;
-  
-    // only place to establish first barlineXPosition
-  [self setXPosition:(kStaveWidthMargin + self.clef.frame.size.width + _keySigWidth) forBarline:0];
-}
-
--(CGFloat)stavePositionForAccidentalIndex:(NSUInteger)accidentalIndex {
-  
-  CGFloat finalValue = 0;
-  
-  if (accidentalIndex != NSUIntegerMax) { // check accidental index
-  
-      // sharps
-    if (self.keySigIndex <= 6) {
-        //------------------------------------------------------------------------
-        // even or odd index (default is tenor clef)
-      finalValue = (accidentalIndex % 2 == 0) ?
-      6 - accidentalIndex * 0.5 :
-      2.5 - accidentalIndex * 0.5;
-        //------------------------------------------------------------------------
-      
-        // all other keys but tenor clef have first and third accidentals raised
-      if (self.clef.mySymbol != kTenorClef) {
-        finalValue = (accidentalIndex == 0 || accidentalIndex == 2) ? (finalValue - 7) : finalValue;
-      }
-      
-        // flats
-    } else {
-        //------------------------------------------------------------------------
-        // even or odd index (default is tenor clef)
-      finalValue = (accidentalIndex % 2 == 0) ?
-      3 + accidentalIndex * 0.5 :
-      -0.5 + accidentalIndex * 0.5;
-        //------------------------------------------------------------------------
-    }
-  }
-  
-  switch (self.clef.mySymbol) {
-    case kTrebleClef:
-      finalValue = finalValue + 4;
-      break;
-    case kAltoClef:
-      finalValue = finalValue + 5;
-      break;
-    case kBassClef:
-      finalValue = finalValue + 6;
-      break;
-    default:
-      break;
-  }
-  
-  return finalValue;
-}
 
 #pragma mark - note state change methods
 
--(void)instantiateNewNoteWithSymbol:(MusicSymbol)symbol {
+-(SymbolView *)instantiateNewNoteWithSymbol:(MusicSymbol)symbol {
   
   if (symbol == kQuarterNoteStemDown) {
     symbol = kQuarterNoteStemUp;
@@ -910,6 +942,8 @@ typedef enum noteMultiplier {
   } completion:^(BOOL finished) {
     newNote.userInteractionEnabled = YES;
   }];
+  
+  return newNote;
 }
 
 #pragma mark - note positioning methods
@@ -932,9 +966,6 @@ typedef enum noteMultiplier {
     
     if (![self noteWasAlreadyPlacedOnStaves:self.touchedNote]) {
       
-        // add touched note to array
-//      [self.stuffOnStaves addObject:self.touchedNote];
-      
         // generate new note for self.view
       [self instantiateNewNoteWithSymbol:self.touchedNote.mySymbol];
     }
@@ -949,8 +980,11 @@ typedef enum noteMultiplier {
       // note is not within staves
   } else {
     
+    [self swapNote:self.touchedNote withElementInBar:NSUIntegerMax putNoteOnStaves:NO];
+    
       // if note already belongs on staves, discard
     if ([self noteWasAlreadyPlacedOnStaves:self.touchedNote]) {
+      
       [self.touchedNote discard];
       
         // else send it home to rack
@@ -1200,6 +1234,87 @@ typedef enum noteMultiplier {
 
 -(NSUInteger)supportedInterfaceOrientations {
   return UIInterfaceOrientationMaskLandscape;
+}
+
+#pragma mark - keySig methods
+
+-(void)updateKeySigLabel {
+  
+    // sharps are 0-5, flats are 6-11
+  MusicSymbol symbol = (self.keySigIndex < 6) ? kSharp : kFlat;
+  CGFloat accidentalWidth = 0;
+  
+  for (int i = 0; i < 6; i++) {
+    SymbolView *accidental = self.keySigAccidentals[i];
+    if ((symbol == kSharp && i < self.keySigIndex) ||
+        (symbol == kFlat && i <= (self.keySigIndex - 6))) {
+      
+      accidental.hidden = NO;
+      [accidental modifyGivenSymbol:symbol];
+      CGFloat factor = [self stavePositionForAccidentalIndex:i];
+      accidental.center = CGPointMake(kStaveWidthMargin + self.clef.frame.size.width + ((i + 0.5) * accidental.frame.size.width), kStaveHeight * (factor / 2 + 3.5 + kStaveYAdjust));
+      
+      if (accidentalWidth == 0) {
+        accidentalWidth = accidental.frame.size.width;
+      }
+      
+    } else {
+      accidental.hidden = YES;
+    }
+  }
+  
+  _keySigWidth = (self.keySigIndex < 6 ? self.keySigIndex : (self.keySigIndex % 6) + 1) * accidentalWidth;
+  
+    // only place to establish first barlineXPosition
+  [self setXPosition:(kStaveWidthMargin + self.clef.frame.size.width + _keySigWidth) forBarline:0];
+}
+
+-(CGFloat)stavePositionForAccidentalIndex:(NSUInteger)accidentalIndex {
+  
+  CGFloat finalValue = 0;
+  
+  if (accidentalIndex != NSUIntegerMax) { // check accidental index
+    
+      // sharps
+    if (self.keySigIndex <= 6) {
+        //------------------------------------------------------------------------
+        // even or odd index (default is tenor clef)
+      finalValue = (accidentalIndex % 2 == 0) ?
+      6 - accidentalIndex * 0.5 :
+      2.5 - accidentalIndex * 0.5;
+        //------------------------------------------------------------------------
+      
+        // all other keys but tenor clef have first and third accidentals raised
+      if (self.clef.mySymbol != kTenorClef) {
+        finalValue = (accidentalIndex == 0 || accidentalIndex == 2) ? (finalValue - 7) : finalValue;
+      }
+      
+        // flats
+    } else {
+        //------------------------------------------------------------------------
+        // even or odd index (default is tenor clef)
+      finalValue = (accidentalIndex % 2 == 0) ?
+      3 + accidentalIndex * 0.5 :
+      -0.5 + accidentalIndex * 0.5;
+        //------------------------------------------------------------------------
+    }
+  }
+  
+  switch (self.clef.mySymbol) {
+    case kTrebleClef:
+      finalValue = finalValue + 4;
+      break;
+    case kAltoClef:
+      finalValue = finalValue + 5;
+      break;
+    case kBassClef:
+      finalValue = finalValue + 6;
+      break;
+    default:
+      break;
+  }
+  
+  return finalValue;
 }
 
 @end
