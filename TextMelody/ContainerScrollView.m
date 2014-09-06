@@ -44,13 +44,13 @@
 
 -(void)touchesBegan:(NSSet *)touches withEvent:(UIEvent *)event {
   
-  NSLog(@"touchesBegan from container");
+//  NSLog(@"touchesBegan from container");
   [self.customDelegate touchesBegan:touches withEvent:event];
 }
 
 -(void)touchesMoved:(NSSet *)touches withEvent:(UIEvent *)event {
   
-  NSLog(@"touchesMoved from container");
+//  NSLog(@"touchesMoved from container");
   [self.customDelegate touchesMoved:touches withEvent:event];
 }
 

@@ -18,7 +18,7 @@
 -(BOOL)application:(UIApplication *)application openURL:(NSURL *)url
     sourceApplication:(NSString *)sourceApplication annotation:(id)annotation {
   
-  NSLog(@"URL pathComponents: %@", [url pathComponents]);
+//  NSLog(@"URL pathComponents: %@", [url pathComponents]);
     // path components are of form @["/", key0, m111, k1l1, nono, 01no]
   
   NSArray *pathComponents = [url pathComponents];

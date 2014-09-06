@@ -40,6 +40,7 @@
       
       self.homePosition = CGPointMake(CGFLOAT_MAX, CGFLOAT_MAX);
       self.currentBar = NSUIntegerMax;
+      self.currentHalfSection = NSUIntegerMax;
       self.staveIndex = NSIntegerMax;
       
       self.userInteractionEnabled = YES;
@@ -51,10 +52,12 @@
     }
     
       // testing purposes
+    /*
     _centerDot = [[UIView alloc] initWithFrame:CGRectMake(0, 0, 1.5, 1.5)];
     _centerDot.backgroundColor = [UIColor redColor];
     _centerDot.center = CGPointMake(self.frame.size.width / 2, self.frame.size.height / 2);
     [self addSubview:_centerDot];
+     */
     
 //    self.layer.borderColor = [UIColor redColor].CGColor;
 //    self.layer.borderWidth = 0.5f;
@@ -303,10 +306,12 @@
 -(void)repositionTouchSubview {
   
     // testing purposes
+  /*
   self.touchSubview.layer.borderColor = [UIColor redColor].CGColor;
   self.touchSubview.layer.borderWidth = 0.5;
   self.touchSubview.layer.cornerRadius = kTouchSubviewRadius / 2;
   self.touchSubview.clipsToBounds = YES;
+   */
   
   self.touchSubview.center = CGPointMake(self.frame.size.width / 2,
                                          self.frame.size.height / 2);

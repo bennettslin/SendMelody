@@ -19,6 +19,7 @@
 @property (nonatomic) BOOL onStaves;
 
 @property (nonatomic) NSUInteger currentBar;
+@property (nonatomic) NSUInteger currentHalfSection;
 
 -(instancetype)initWithSymbol:(MusicSymbol)symbol;
 -(void)modifyGivenSymbol:(MusicSymbol)symbol;
